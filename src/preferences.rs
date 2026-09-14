@@ -494,10 +494,13 @@ impl ConfigStore {
     }
 
     pub fn load(&self) -> Result<Preferences, PreferenceError> {
-        if !self.path.exists() {
-            return Ok(Preferences::default());
-        }
-        let bytes = read_consistent(&self.path)?;
+        let bytes = match read_consistent(&self.path) {
+            Ok(bytes) => bytes,
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {
+                return Ok(Preferences::default());
+            }
+            Err(error) => return Err(error.into()),
+        };
         let preferences: Preferences = serde_json::from_slice(&bytes)?;
         preferences.validate()?;
         Ok(preferences)
@@ -544,16 +547,15 @@ impl ConfigStore {
 }
 
 fn read_consistent(path: &Path) -> io::Result<Vec<u8>> {
-    // ReplaceFileW cannot swap a file while a Windows reader has it open
-    // without FILE_SHARE_DELETE.  Keep the read side bounded and retry the
-    // short sharing window; each successful read is still one complete file
+    // External programs can hold a Windows file without FILE_SHARE_DELETE.
+    // Retry a short sharing window; successful reads see one complete file
     // because writers replace by rename rather than truncating in place.
     for attempt in 0..200 {
         match fs::read(path) {
             Ok(bytes) => return Ok(bytes),
             Err(error)
                 if cfg!(windows)
-                    && matches!(error.raw_os_error(), Some(32 | 33))
+                    && matches!(error.raw_os_error(), Some(5 | 32 | 33))
                     && attempt < 199 =>
             {
                 std::thread::sleep(std::time::Duration::from_millis(1));
@@ -574,7 +576,7 @@ fn replace_file(temporary: &Path, destination: &Path) -> io::Result<()> {
         use std::os::windows::ffi::OsStrExt;
 
         const MOVEFILE_WRITE_THROUGH: u32 = 0x0000_0008;
-        const REPLACEFILE_WRITE_THROUGH: u32 = 0x0000_0001;
+        const MOVEFILE_REPLACE_EXISTING: u32 = 0x0000_0001;
         let wide = |path: &Path| {
             path.as_os_str()
                 .encode_wide()
@@ -584,66 +586,38 @@ fn replace_file(temporary: &Path, destination: &Path) -> io::Result<()> {
         let temporary_wide = wide(temporary);
         let destination_wide = wide(destination);
 
-        // ReplaceFileW performs the destination swap without a delete/rename
-        // gap.  If the destination has not been created yet, MoveFileExW is
-        // the equivalent atomic first-install operation.  Both calls happen
-        // after the temporary handle was flushed and closed above.
+        // Publish by one same-directory rename for both creation and update.
+        // ReplaceFileW combines several operations and exposed a missing-path
+        // window to concurrent readers in our Windows regression. The sibling
+        // temporary file is already flushed/closed; no copy/delete fallback is
+        // permitted here.
         #[allow(non_snake_case)]
         unsafe extern "system" {
             fn MoveFileExW(existing: *const u16, replacement: *const u16, flags: u32) -> i32;
-            fn ReplaceFileW(
-                replaced: *const u16,
-                replacement: *const u16,
-                backup: *const u16,
-                flags: u32,
-                exclude: *mut std::ffi::c_void,
-                reserved: *mut std::ffi::c_void,
-            ) -> i32;
         }
 
-        // Try the replace path first.  A missing destination returns an error
-        // and is handled by MoveFileExW below; a reader may briefly hold the
-        // old file, so sharing violations receive a bounded retry rather than
-        // exposing a spurious config-write failure.
-        let mut last_error = None;
         for attempt in 0..200 {
-            let replaced = unsafe {
-                ReplaceFileW(
-                    destination_wide.as_ptr(),
-                    temporary_wide.as_ptr(),
-                    std::ptr::null(),
-                    REPLACEFILE_WRITE_THROUGH,
-                    std::ptr::null_mut(),
-                    std::ptr::null_mut(),
-                )
-            };
-            if replaced != 0 {
-                return Ok(());
-            }
-            let replace_error = io::Error::last_os_error();
             let moved = unsafe {
                 MoveFileExW(
                     temporary_wide.as_ptr(),
                     destination_wide.as_ptr(),
-                    MOVEFILE_WRITE_THROUGH,
+                    MOVEFILE_WRITE_THROUGH | MOVEFILE_REPLACE_EXISTING,
                 )
             };
             if moved != 0 {
                 return Ok(());
             }
-            let move_error = io::Error::last_os_error();
-            last_error = Some(move_error);
-            let sharing = matches!(replace_error.raw_os_error(), Some(32 | 33))
-                || matches!(
-                    last_error.as_ref().and_then(io::Error::raw_os_error),
-                    Some(32 | 33)
-                );
+            let error = io::Error::last_os_error();
+            // An open reader can also produce ERROR_ACCESS_DENIED while the
+            // replaced file is delete-pending. Persistent permission errors
+            // still propagate after the same bounded retry window.
+            let sharing = matches!(error.raw_os_error(), Some(5 | 32 | 33));
             if !sharing || attempt == 199 {
-                break;
+                return Err(error);
             }
             std::thread::sleep(std::time::Duration::from_millis(1));
         }
-        Err(last_error.unwrap_or_else(io::Error::last_os_error))
+        unreachable!("bounded preference rename loop always returns")
     }
 }
 
@@ -847,32 +821,75 @@ mod tests {
 
     #[test]
     fn concurrent_readers_observe_only_complete_json_documents() {
-        use std::sync::Arc;
+        use std::sync::{Arc, Barrier};
         use std::thread;
 
         let directory = tempdir().unwrap();
         let store = Arc::new(ConfigStore::at_dir(directory.path()));
+        store
+            .save(&Preferences {
+                theme: Theme::Paper,
+                writer_target_override: Some(777),
+                ..Preferences::default()
+            })
+            .unwrap();
+        let barrier = Arc::new(Barrier::new(2));
+        let reader_barrier = Arc::clone(&barrier);
         let reader_store = Arc::clone(&store);
         let reader = thread::spawn(move || {
-            for _ in 0..200 {
-                if reader_store.path().exists() {
-                    let loaded = reader_store.load().expect("atomic JSON replacement");
-                    loaded.validate().expect("validated preference snapshot");
-                }
+            reader_barrier.wait();
+            for _ in 0..3_000 {
+                let loaded = reader_store.load().expect("atomic JSON replacement");
+                loaded.validate().expect("validated preference snapshot");
+                assert_eq!(
+                    loaded.writer_target_override,
+                    Some(777),
+                    "a replacement must not expose missing/default preferences"
+                );
+                assert!(matches!(loaded.theme, Theme::Paper | Theme::Amber));
                 thread::yield_now();
             }
         });
+        barrier.wait();
         for index in 0..50 {
             let preferences = Preferences {
                 theme: if index % 2 == 0 {
-                    Theme::Aurora
+                    Theme::Amber
                 } else {
                     Theme::Paper
                 },
+                writer_target_override: Some(777),
                 ..Preferences::default()
             };
             store.save(&preferences).unwrap();
         }
         reader.join().unwrap();
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn blocked_replacement_keeps_old_preferences_and_removes_temporary_file() {
+        use std::os::windows::fs::OpenOptionsExt;
+        use std::time::{Duration, Instant};
+
+        let directory = tempdir().unwrap();
+        let store = ConfigStore::at_dir(directory.path());
+        let previous = Preferences {
+            theme: Theme::Paper,
+            ..Preferences::default()
+        };
+        store.save(&previous).unwrap();
+        // Model another program that permits readers but denies rename/delete.
+        let held = OpenOptions::new()
+            .read(true)
+            .share_mode(1)
+            .open(store.path())
+            .unwrap();
+        let started = Instant::now();
+        assert!(store.save(&Preferences::default()).is_err());
+        assert!(started.elapsed() < Duration::from_secs(2));
+        drop(held);
+        assert_eq!(store.load().unwrap(), previous);
+        assert_eq!(fs::read_dir(directory.path()).unwrap().count(), 1);
     }
 }

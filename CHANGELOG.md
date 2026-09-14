@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.0-dev.15] - 2026-09-14
+
+### Fixed
+
+- Windows preferences publish through one same-directory rename, preventing
+  concurrent readers from seeing a missing file or default settings during updates.
+- Bounded handling of Windows sharing/delete-pending errors preserves the last
+  valid preferences when another program prevents replacement.
+
+### Added
+
+- Stronger concurrent-read and blocked-replacement regression coverage.
+
 ## [0.2.0-dev.14] - 2026-09-14
 
 ### Changed
