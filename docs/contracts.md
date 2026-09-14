@@ -22,6 +22,9 @@ Creation handlers set `CommandOutput.committed = true` after a known commit; mai
 preserves successful save status if its final output stream breaks. A failed
 post-commit enrichment/detail/receipt step must return committed output + warning,
 not a generic AppError. Unknown commit state uses exit 6 and recovery data.
+`src/input.rs` provides `from_words`, `read_add`, `read_utf8`, `normalize` and the
+1 MiB input limit. WP05 consumes these tested adapters and assumes ownership when
+dispatched; it must preserve authored whitespace and reject invalid UTF-8.
 
 ## Shared Capsule core
 

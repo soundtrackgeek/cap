@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0-dev.5] - 2026-09-14
+
+### Added
+
+- Bounded UTF-8 entry input adapters with BOM handling, exact whitespace retention,
+  Capsule newline normalization and content-source validation.
+
 ## [0.2.0-dev.4] - 2026-09-14
 
 ### Added
