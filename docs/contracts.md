@@ -26,6 +26,13 @@ not a generic AppError. Unknown commit state uses exit 6 and recovery data.
 1 MiB input limit. WP05 consumes these tested adapters and assumes ownership when
 dispatched; it must preserve authored whitespace and reject invalid UTF-8.
 
+`src/cancellation.rs` exposes `install() -> Result<Arc<AtomicBool>, String>` and
+`requested() -> bool`. Install after input acquisition, before an operation with
+cooperative cancellation. Effects poll the token; raw writer Ctrl+C events may
+set the same token. A confirmed commit remains successful on interruption;
+pre-commit interruption retains the recovery record. Never exit inside the signal
+callback or depend on Drop running after an unhandled process termination.
+
 ## Shared Capsule core
 
 WP01 owns `crates/capsule-core` in the Capsule repository. Expose the extracted

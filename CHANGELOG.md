@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.0-dev.7] - 2026-09-14
+
+### Added
+
+- Reviewed, revision-pinned headless Capsule dependency and shared cooperative
+  interruption token for terminal sessions and capture phases.
+- Integrated color-cli renderer and complete synthetic schema fixture matrix.
+
+### Fixed
+
+- Corrected the illustrative save receipt's word count in the specification.
+
 ## [0.2.0-dev.5] - 2026-09-14
 
 ### Added

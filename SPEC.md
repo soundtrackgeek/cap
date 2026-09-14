@@ -65,7 +65,7 @@ Illustrative final receipt, with fictional data:
   ◇ CAPSULE SEALED                              18:42
   Had a lovely walk by the water
 
-  Bergen · Light rain · 12°C          8 words
+  Bergen · Light rain · 12°C          7 words
   entry_k8m2r4a1                      Saved to Capsule
 ```
 
@@ -427,7 +427,7 @@ Illustrative committed receipt:
     "entryUuid": "entry_k8m2r4a1",
     "entryNumber": 1248,
     "createdAt": "2026-09-14 18:42",
-    "wordCount": 8,
+    "wordCount": 7,
     "location": {"status": "captured", "name": "Bergen", "source": "default"},
     "weather": {"status": "captured", "condition": "Light rain", "tempC": 12.0, "fetchedAt": "2026-09-14 18:42"}
   },
