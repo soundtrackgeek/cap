@@ -17,6 +17,9 @@ use serde_json::json;
 use std::io::{self, Write};
 
 const GALLERY_TEXT: &str = "cap fx · synthetic palette gallery";
+// Multiple equal-width rows make the source's vertical, diagonal and per-line
+// placements visible even in a wide terminal where a heading would not wrap.
+const GRADIENT_SAMPLE: &str = "luminous ········ memories\nluminous ········ memories\nluminous ········ memories\nluminous ········ memories";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Demo {
@@ -221,12 +224,16 @@ fn render_demo(
     width: usize,
     theme: Theme,
 ) -> String {
-    let width = width.max(16);
+    let width = width.max(1);
     match demo {
         Demo::Gallery => {
-            let mut output = format!(
-                "[synthetic] cap fx · theme:{} · palette gallery\n",
-                theme.name()
+            let heading = format!(
+                "[synthetic] cap fx · theme:{} · palette gallery",
+                theme.name(),
+            );
+            let mut output = render_static(
+                &final_frame(&layout_text(&heading, width, false), config),
+                color,
             );
             for palette_name in PALETTE_NAMES {
                 let mut palette_config = config.clone();
@@ -248,7 +255,7 @@ fn render_demo(
         }
         Demo::Gradient(gradient) => {
             let text = format!(
-                "[synthetic] theme:{} · {gradient:?} gradient · luminous sample",
+                "[synthetic] theme:{} · {gradient:?} gradient\n{GRADIENT_SAMPLE}",
                 theme.name()
             )
             .to_ascii_lowercase();
@@ -267,8 +274,8 @@ fn animate_demo<W: Write, F: Fn() -> bool>(
     capabilities: &TerminalCapabilities,
     should_cancel: F,
 ) -> Result<(), AppError> {
-    // The gallery has enough text to show every source palette but is still
-    // one bounded explicit-demo animation (at most three seconds).
+    // The animated heading and static eight-palette comparison share one
+    // bounded demo. Do not spend a separate three seconds on every palette.
     let text = match demo {
         Demo::Gallery => GALLERY_TEXT,
         Demo::Palette(palette) => match palette {
@@ -289,12 +296,26 @@ fn animate_demo<W: Write, F: Fn() -> bool>(
             GradientMode::Rainbow => "cap fx · rainbow gradient",
         },
     };
-    let text = format!("{text} · theme:{}", theme.name());
+    let mut text = format!("{text} · theme:{}", theme.name());
+    if matches!(demo, Demo::Gradient(_)) {
+        text.push('\n');
+        text.push_str(GRADIENT_SAMPLE);
+    }
     let result =
         animate_text_with_cancel(writer, &text, config, request, capabilities, should_cancel)
             .map_err(effect_error)?;
     if result.cancelled {
         return Err(AppError::new("CANCELLED", "FX demo cancelled.", 130));
+    }
+    if demo == Demo::Gallery {
+        // A live gallery must leave every actual palette visible, as its
+        // static/JSON preview already does. Recheck width after animation.
+        let width = TerminalCapabilities::detect().compact_width();
+        let color = cap_effects::resolve_output_mode(request, capabilities).color();
+        writer
+            .write_all(render_demo(demo, config, color, width, theme).as_bytes())
+            .and_then(|()| writer.flush())
+            .map_err(effect_error)?;
     }
     Ok(())
 }
@@ -337,6 +358,82 @@ fn preference_error(error: PreferenceError) -> AppError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn live_gallery_leaves_all_eight_palettes_in_the_stream() {
+        let width = TerminalCapabilities::detect().width;
+        let caps = TerminalCapabilities::synthetic(false, width, true, true, false, false, false);
+        let config = EffectConfig {
+            stagger_seconds: 0.0,
+            fade_seconds: 0.0,
+            shimmer: false,
+            ..demo_config(Demo::Gallery, Theme::Aurora)
+        };
+        let mut output = Vec::new();
+        animate_demo(
+            &mut output,
+            Demo::Gallery,
+            &config,
+            Theme::Aurora,
+            OutputRequest {
+                color: ColorChoice::Always,
+                motion: MotionChoice::Full,
+                ..OutputRequest::default()
+            },
+            &caps,
+            || false,
+        )
+        .unwrap();
+        let visible = cap_effects::sanitize_text(&String::from_utf8(output).unwrap());
+        for palette in PALETTE_NAMES {
+            assert!(
+                visible.contains(&format!("{palette:<7}  luminous sample")),
+                "Missing live palette: {palette}"
+            );
+        }
+    }
+
+    #[test]
+    fn source_gradient_placements_have_distinct_multiline_samples() {
+        let layout = layout_text(GRADIENT_SAMPLE, 80, false);
+        assert_eq!(layout.rows.len(), 4);
+        let signatures = [
+            GradientMode::Text,
+            GradientMode::Line,
+            GradientMode::Vertical,
+            GradientMode::Diagonal,
+            GradientMode::Rainbow,
+        ]
+        .into_iter()
+        .map(|gradient| {
+            let frame = final_frame(
+                &layout,
+                &demo_config(Demo::Gradient(gradient), Theme::Aurora),
+            );
+            frame
+                .rows
+                .into_iter()
+                .flatten()
+                .map(|cell| cell.color)
+                .collect::<Vec<_>>()
+        })
+        .collect::<std::collections::HashSet<_>>();
+        assert_eq!(signatures.len(), 5);
+    }
+
+    #[test]
+    fn gallery_heading_and_samples_fit_a_narrow_terminal() {
+        let text = render_demo(
+            Demo::Gallery,
+            &demo_config(Demo::Gallery, Theme::Aurora),
+            ColorMode::Plain,
+            39,
+            Theme::Aurora,
+        );
+        assert!(text
+            .lines()
+            .all(|line| layout_text(line, 1000, false).total_cells <= 39));
+    }
 
     #[test]
     fn gallery_is_marked_synthetic_and_has_all_source_options() {

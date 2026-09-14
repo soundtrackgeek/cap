@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0-dev.21 - 2026-09-14
+
+### Fixed
+
+- Live effects gallery leaves all eight source palettes visible after its
+  animation, and gradient demos show the five placements on multiple rows.
+- The gallery heading wraps within a narrow terminal.
+
 ## 0.2.0-dev.20 - 2026-09-14
 
 ### Added

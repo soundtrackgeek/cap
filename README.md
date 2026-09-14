@@ -88,6 +88,10 @@ cap fx all
 cap completions powershell | Set-Content .\cap-completions.ps1
 ```
 
+`cap fx all` leaves all eight color-cli palettes visible after its short reveal.
+Use `cap fx vertical` (or `text`, `line`, `diagonal`, `rainbow`) to compare
+the source gradient placements on a multiline sample.
+
 `cap fx` uses synthetic text and does not open a journal, network provider, or
 preferences file. Completion output is a script only; review and opt in to it
 explicitly. Metadata suggestions require `CAP_COMPLETIONS_METADATA=1` and use
