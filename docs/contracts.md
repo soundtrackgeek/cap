@@ -9,7 +9,19 @@ wave. SPEC.md remains the user-visible behavior contract.
 Schema version is 1, JSON field names camelCase, save state values snake_case.
 No core or renderer calls stdout directly for machine output. `src/output.rs`
 writes exactly one JSON object plus newline. The orchestrator owns these files.
-The current bootstrap parser is temporary; it must never claim an entry was saved.
+The central typed clap grammar is in `src/cli.rs`. Workers implement command
+handlers with `fn run(args: &CommandArgs, global: &GlobalOptions) ->
+Result<CommandOutput, AppError>` (or a documented variant for multiple actions).
+`CommandOutput` and `AppError` are in `src/app.rs`. Return JSON data plus human text,
+optional quiet UUID and warnings; the root main emits the envelope. Creation may
+emit a guarded immediate human acknowledgement after commit, never in JSON/quiet.
+The orchestrator owns command registration in `app::execute`, `main`, and `lib`.
+Ask before changing the CLI structs. `--json --help` is itself a JSON envelope.
+Commands not yet connected return an explicit implementation error, never Saved.
+Creation handlers set `CommandOutput.committed = true` after a known commit; main
+preserves successful save status if its final output stream breaks. A failed
+post-commit enrichment/detail/receipt step must return committed output + warning,
+not a generic AppError. Unknown commit state uses exit 6 and recovery data.
 
 ## Shared Capsule core
 

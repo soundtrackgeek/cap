@@ -26,4 +26,6 @@ Capsule core, and a Rust port of the palettes/fade/shimmer from
 
 Development: `cargo test --workspace` and `cargo build`. Work package progress is
 tracked in [docs/implementation-status.md](docs/implementation-status.md).
+The development build supports `--help`, `--version`, and JSON help/usage errors;
+feature commands are connected only after their work packages pass review.
 Tests use synthetic temporary databases; the live journal is not a test fixture.

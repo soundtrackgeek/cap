@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.0-dev.4] - 2026-09-14
+
+### Added
+
+- Typed command grammar and handler/output contracts, including explicit literal
+  entry syntax, content-source conflicts, bounded pagination and JSON parse/help.
+- Process checks ensuring command errors cannot fall through to journal capture.
+
 ## [0.2.0-dev.1] - 2026-09-14
 
 ### Added
