@@ -21,7 +21,7 @@ and optional desktop work remain on separate branches. No live journal is a fixt
 | WP05 | `01a0a126-0c9c-7ab3-9685-4268e34fc1f9` | `C:\Users\jtill\.codex\worktrees\46e3\cap` | `codex/cap-capture-cli` | accepted `e91f901` + `7d8192a`; root motion complete |
 | WP10 | `01a0a127-151c-7b80-9134-33a63e426279` | `C:\Users\jtill\.codex\worktrees\ac36\capsule_tauri` | `codex/cap-external-refresh` | reviewed through `e8357f0`; preserved on branch, excluded from CLI delivery |
 | WP08 | `01a0a172-c0a1-7800-9252-96aa2b9b6b4f` | `C:\Users\jtill\.codex\worktrees\b988\cap` | `codex/cap-writer` | accepted `ee2ff6a`; root routing, recovery and viewport corrections integrated |
-| WP11 | `01a0a168-3923-73d1-b823-ad6c90db4596` | `C:\Users\jtill\.codex\worktrees\b3cd\cap` | `codex/cap-delivery` | accepted `7740f42`, `1d06b8e`, `b1eaf90`; final CLI packaging in progress |
+| WP11 | `01a0a168-3923-73d1-b823-ad6c90db4596` | `C:\Users\jtill\.codex\worktrees\b3cd\cap` | `codex/cap-delivery` | accepted `7740f42`, `1d06b8e`, `b1eaf90`; packaged, installed and verified |
 
 Every worker uses `gpt-5.6-luna` with `max` reasoning. Owned files and dependencies
 are specified in PLAN.md and each task brief. WP02/WP03 communicate directly about
@@ -109,7 +109,11 @@ late install failures preserve original binary/receipt/metadata/PATH, and a lock
 uninstall fails before removing PATH. Package stamps bind the executable hash to
 source/core/version/features and reject stale or tampered SkipBuild inputs.
 
-G01–G06 and G12 have automated evidence; G08 final installed smoke is next. G10
+G01–G06 and G12 have automated evidence; G08 final archive and installed smoke
+passed. The user PATH contains the installed bin directory exactly once, and a
+new environment-cleared PowerShell process using the persisted machine/user PATH
+resolved cap from an unrelated folder, saved/read back synthetic text and passed
+doctor. No completion profile was activated. See [delivery evidence](evidence/delivery.md). G10
 has measured development timings and bounded contention, without a controlled
 cold-cache claim. G11 has console and deterministic regression evidence; physical
 terminal resize/focus interactions are not independently recorded. G07 actual

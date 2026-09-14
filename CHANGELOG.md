@@ -7,6 +7,8 @@
 - Isolated console launcher with environment clearing and Windows console-mode
   restoration checks, plus writer/recovery process acceptance coverage.
 - Windows CI installation lifecycle and fresh-shell capture checks.
+- Verified standalone dev.28 archive and per-user installation with checksums,
+  exact synthetic readback and persisted-PATH resolution from a fresh shell.
 
 ### Fixed
 
