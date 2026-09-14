@@ -269,6 +269,15 @@ Assert-NoReparsePath $root
 $bin = Get-PathKey (Join-Path $root 'bin')
 $destination = Get-PathKey (Join-Path $bin 'cap.exe')
 $receiptPath = Get-PathKey (Join-Path $root '.cap-install.json')
+if ((Test-Path -LiteralPath $root) -and -not (Test-Path -LiteralPath $root -PathType Container)) {
+    throw "The requested install root is not a directory: $root"
+}
+if ((Test-Path -LiteralPath $bin) -and -not (Test-Path -LiteralPath $bin -PathType Container)) {
+    throw "The requested install bin path is not a directory: $bin"
+}
+Assert-NoReparsePath $bin
+Assert-NoReparsePath $destination
+Assert-NoReparsePath $receiptPath
 Assert-UnderRoot $bin $root | Out-Null
 Assert-UnderRoot $destination $root | Out-Null
 Assert-UnderRoot $receiptPath $root | Out-Null
@@ -291,23 +300,82 @@ elseif (-not $Force) {
     throw "No cap install receipt was found for $destination. Use -Force only after reviewing the directory."
 }
 
+$files = if ($null -ne $receipt) { Get-ReceiptFiles -Receipt $receipt -Root $root } else { @('bin\cap.exe') }
+$preflightSkipped = [Collections.Generic.List[string]]::new()
+foreach ($relative in $files) {
+    $target = Assert-UnderRoot (Join-Path $root $relative) $root
+    Assert-NoReparsePath $target
+    if (-not (Test-Path -LiteralPath $target -PathType Leaf)) { continue }
+    $expected = $null
+    if ($null -ne $receipt -and $null -ne $receipt.fileHashes) {
+        $property = $receipt.fileHashes.PSObject.Properties | Where-Object { $_.Name -ieq $relative } | Select-Object -First 1
+        if ($null -ne $property) { $expected = [string]$property.Value }
+    }
+    if ($null -eq $expected -and $relative -ieq 'bin\cap.exe' -and $null -ne $receipt) {
+        $expected = [string]$receipt.binarySha256
+    }
+    if (-not $Force -and $null -ne $expected -and (Get-Sha256 $target) -ine $expected) {
+        [void]$preflightSkipped.Add($relative)
+        continue
+    }
+    Test-FileAvailableForRemoval $target
+}
+
+$completion = $null
+$completionExpected = $null
+if ($null -ne $receipt -and $null -ne $receipt.completionActivation -and -not [string]::IsNullOrWhiteSpace([string]$receipt.completionActivation.Path)) {
+    $completion = Assert-UnderRoot ([string]$receipt.completionActivation.Path) $root
+    Assert-NoReparsePath $completion
+    if ($null -ne $receipt.fileHashes) {
+        $property = $receipt.fileHashes.PSObject.Properties | Where-Object { $_.Name -ieq 'cap-completions.ps1' } | Select-Object -First 1
+        if ($null -ne $property) { $completionExpected = [string]$property.Value }
+    }
+    if (Test-Path -LiteralPath $completion -PathType Leaf) {
+        if (-not $Force -and $null -ne $completionExpected -and (Get-Sha256 $completion) -ine $completionExpected) {
+            if (-not ($preflightSkipped -contains 'cap-completions.ps1')) { [void]$preflightSkipped.Add('cap-completions.ps1') }
+        }
+        else {
+            Test-FileAvailableForRemoval $completion
+        }
+    }
+}
+
+$profilePath = $null
+if ($null -ne $receipt -and $null -ne $receipt.completionActivation -and -not [string]::IsNullOrWhiteSpace([string]$receipt.completionActivation.Profile)) {
+    $profilePath = ConvertTo-AbsolutePath ([string]$receipt.completionActivation.Profile)
+    Assert-NoReparsePath $profilePath
+    if (Test-Path -LiteralPath $profilePath -PathType Leaf) {
+        Test-FileAvailableForRemoval $profilePath
+    }
+}
+
+$pathStateAbsolute = $null
+if (-not [string]::IsNullOrWhiteSpace($PathStatePath)) {
+    $pathStateAbsolute = ConvertTo-AbsolutePath $PathStatePath
+    Assert-NoReparsePath $pathStateAbsolute
+    if ((Test-Path -LiteralPath $pathStateAbsolute) -and -not (Test-Path -LiteralPath $pathStateAbsolute -PathType Leaf)) {
+        throw "The PATH state path is not a file: $pathStateAbsolute"
+    }
+}
+$shouldRemovePath = -not $KeepPath -and ($null -eq $receipt -or $receipt.pathEntry -eq $true)
+if ($shouldRemovePath -and $null -ne $pathStateAbsolute -and (Test-Path -LiteralPath $pathStateAbsolute -PathType Leaf)) {
+    Test-FileAvailableForRemoval $pathStateAbsolute
+}
+$removeReceipt = $null -ne $receipt -and $preflightSkipped.Count -eq 0
+if ($removeReceipt -and (Test-Path -LiteralPath $receiptPath -PathType Leaf)) {
+    Test-FileAvailableForRemoval $receiptPath
+}
+
+$oldPathValue = Get-PathValue $PathStatePath
+$oldUserPathValue = [Environment]::GetEnvironmentVariable('Path', 'User')
+$pathStateExisted = $null -ne $pathStateAbsolute -and (Test-Path -LiteralPath $pathStateAbsolute -PathType Leaf)
 if ($WhatIfPreference) { return }
 
 $pathChanged = $false
+$pathTouched = $false
 try {
-    if (-not $KeepPath -and ($null -eq $receipt -or $receipt.pathEntry -eq $true)) {
-        $pathResult = Remove-UserPathEntry -BinPath $bin -StatePath $PathStatePath
-        $pathChanged = $pathResult.Changed
-    }
-
     $removed = [Collections.Generic.List[string]]::new()
     $skipped = [Collections.Generic.List[string]]::new()
-    if ($null -ne $receipt) {
-        $files = Get-ReceiptFiles -Receipt $receipt -Root $root
-    }
-    else {
-        $files = @('bin\cap.exe')
-    }
     foreach ($relative in $files) {
         $target = Assert-UnderRoot (Join-Path $root $relative) $root
         if (-not (Test-Path -LiteralPath $target -PathType Leaf)) { continue }
@@ -323,7 +391,6 @@ try {
             [void]$skipped.Add($relative)
             continue
         }
-        Test-FileAvailableForRemoval $target
         Remove-Item -LiteralPath $target -Force
         [void]$removed.Add($relative)
     }
@@ -333,23 +400,24 @@ try {
         $profileRemoved = Remove-ProfileActivation -Activation $receipt.completionActivation -AllowModified:$Force
     }
 
-    if ($null -ne $receipt -and $null -ne $receipt.completionActivation -and -not [string]::IsNullOrWhiteSpace([string]$receipt.completionActivation.Path)) {
-        $completion = Assert-UnderRoot ([string]$receipt.completionActivation.Path) $root
-        if (Test-Path -LiteralPath $completion -PathType Leaf) {
-            $expectedCompletion = $null
-            if ($null -ne $receipt.fileHashes) {
-                $property = $receipt.fileHashes.PSObject.Properties | Where-Object { $_.Name -ieq 'cap-completions.ps1' } | Select-Object -First 1
-                if ($null -ne $property) { $expectedCompletion = [string]$property.Value }
-            }
-            if ($Force -or $null -eq $expectedCompletion -or (Get-Sha256 $completion) -ieq $expectedCompletion) {
-                Remove-Item -LiteralPath $completion -Force
-                [void]$removed.Add('cap-completions.ps1')
-            }
+    if ($null -ne $completion -and (Test-Path -LiteralPath $completion -PathType Leaf)) {
+        if ($Force -or $null -eq $completionExpected -or (Get-Sha256 $completion) -ieq $completionExpected) {
+            Remove-Item -LiteralPath $completion -Force
+            [void]$removed.Add('cap-completions.ps1')
+        }
+        elseif (-not ($skipped -contains 'cap-completions.ps1')) {
+            [void]$skipped.Add('cap-completions.ps1')
         }
     }
 
     if ($null -ne $receipt -and $skipped.Count -eq 0 -and (Test-Path -LiteralPath $receiptPath -PathType Leaf)) {
         Remove-Item -LiteralPath $receiptPath -Force
+    }
+
+    if ($shouldRemovePath) {
+        $pathTouched = $true
+        $pathResult = Remove-UserPathEntry -BinPath $bin -StatePath $PathStatePath
+        $pathChanged = $pathResult.Changed
     }
 
     if ((Test-Path -LiteralPath $bin -PathType Container) -and (@(Get-ChildItem -LiteralPath $bin -Force).Count -eq 0)) {
@@ -377,5 +445,20 @@ try {
     }
 }
 catch {
-    throw
+    $failure = $_
+    if ($pathTouched) {
+        try {
+            if ($null -ne $pathStateAbsolute) {
+                if ($pathStateExisted) { Publish-TextFile -Destination $pathStateAbsolute -Content $oldPathValue }
+                elseif (Test-Path -LiteralPath $pathStateAbsolute -PathType Leaf) { Remove-Item -LiteralPath $pathStateAbsolute -Force }
+            }
+            else {
+                [Environment]::SetEnvironmentVariable('Path', $oldUserPathValue, 'User')
+            }
+        }
+        catch {
+            Write-Warning "Could not restore the original user PATH: $($_.Exception.Message)"
+        }
+    }
+    throw $failure
 }

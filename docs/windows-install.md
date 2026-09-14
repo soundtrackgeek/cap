@@ -22,6 +22,10 @@ does not build tests/examples or use a sibling Capsule, color-cli, or Python
 checkout. The archive name includes the package version and Windows platform.
 `<archive>.sha256` verifies the archive itself; `checksums.sha256` inside the
 archive verifies every payload file except the manifest and checksum file.
+Each successful normal package also records a local provenance stamp binding the
+delivery binary hash to the source/core revisions, release profile, default
+feature set, and checkout state; `-SkipBuild` refuses a binary without a matching
+stamp.
 
 ## Install and update
 
@@ -41,6 +45,9 @@ an in-use/running prior binary, and publishes an install receipt at
 `.cap-install.json`. Re-running the script updates only a prior cap install.
 An unrelated existing `cap.exe` is a collision and requires an explicit
 `-Force` after review.
+These scripts deliver only `cap.exe` and installer metadata; they never install
+or update the Capsule desktop app or any Capsule journal, recovery, settings,
+media, sync, or backup data.
 
 Only the bin directory is added to the user PATH. Existing PATH text and entry
 ordering are preserved, and a matching entry is never duplicated. The current
@@ -95,7 +102,9 @@ from any directory:
 The script creates a new synthetic fixture lab, clears inherited Capsule/cap
 environment variables in every child, launches from an unrelated working
 directory and uses a fresh `PowerShell -NoProfile` process for `cap --help`,
-`cap --json doctor`, and the capture/read smoke. It does not use the live
+`cap --json doctor`, and the capture/read smoke. Child environment variables
+are reduced to the synthetic test values plus the minimum Windows launcher
+variables, and each child has a bounded timeout. It does not use the live
 journal. The native Windows Terminal UI and physical-device behavior remain
 separate release gates.
 

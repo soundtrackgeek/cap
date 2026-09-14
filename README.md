@@ -159,5 +159,8 @@ clearly local development archive). The archive contains `cap.exe`, SHA-256 mani
 per-user `install.ps1`/`uninstall.ps1` scripts. Installation defaults to
 `%LOCALAPPDATA%\Programs\cap\bin`; only that directory is added to user PATH,
 and no shell profile is changed unless `-ActivateCompletions` is explicitly
-requested. See [docs/windows-install.md](docs/windows-install.md) for update,
-uninstall and temporary-root smoke commands.
+requested. The delivery scripts install and update only `cap.exe` and their
+receipt/metadata; they never install or update the Capsule desktop app or its
+journal, recovery, settings, media, sync, or backup data. See
+[docs/windows-install.md](docs/windows-install.md) for update, uninstall and
+temporary-root smoke commands.
