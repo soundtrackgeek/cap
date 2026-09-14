@@ -24,6 +24,9 @@ The source-backed helpers `PALETTES`, `palette_color`, `lerp_rgb`, `pick_color`,
 `hsv_to_rgb`, and `intensity` are public for receipts, themes, and reference
 tests. `TerminalGuard` restores color, cursor visibility, alternate-screen, and
 raw mode on normal return, I/O error, or unwinding.
+Output-only animations keep processed input enabled so the caller's Ctrl+C
+handler receives signals. A writer that consumes raw keyboard events opts into
+raw mode explicitly; nested guards preserve raw mode already owned by a caller.
 
 ## Synthetic visual QA
 

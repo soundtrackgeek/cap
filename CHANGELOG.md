@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.0-dev.14] - 2026-09-14
+
+### Fixed
+
+- Output-only effects preserve processed input so Ctrl+C reaches the CLI handler;
+  terminal guards retain an existing caller-owned raw mode.
+
+### Added
+
+- Windows console interruption probe that targets only its synthetic child group
+  and verifies the child's actual cancellation exit code.
+
 ## [0.2.0-dev.12] - 2026-09-14
 
 ### Added

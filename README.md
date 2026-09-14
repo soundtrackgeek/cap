@@ -74,3 +74,8 @@ cap completions powershell | Set-Content .\cap-completions.ps1
 preferences file. Completion output is a script only; review and opt in to it
 explicitly. Metadata suggestions require `CAP_COMPLETIONS_METADATA=1` and use
 read-only `tags`/`moods` queries.
+
+To verify console cancellation without journal access, build
+`cargo build --example fx_interrupt_probe --locked` and run
+`target\debug\examples\fx_interrupt_probe.exe target\debug\cap.exe` in a console.
+The probe interrupts only its synthetic child process and checks exit code 130.

@@ -359,17 +359,16 @@ impl Default for GuardOptions {
 }
 
 impl GuardOptions {
-    pub fn for_animation(caps: &TerminalCapabilities) -> Self {
-        Self {
-            raw_mode: caps.is_tty,
-            ..Self::default()
-        }
+    pub fn for_animation(_caps: &TerminalCapabilities) -> Self {
+        // Output-only effects do not consume keyboard events. Keeping cooked
+        // input lets the process Ctrl+C handler receive the interrupt signal.
+        Self::default()
     }
 
     pub fn for_demo(caps: &TerminalCapabilities) -> Self {
         Self {
             alternate_screen: caps.is_tty,
-            raw_mode: caps.is_tty,
+            raw_mode: false,
             ..Self::default()
         }
     }
@@ -398,7 +397,7 @@ impl<'a, W: Write> TerminalGuard<'a, W> {
             raw_enabled: false,
             restored: false,
         };
-        if options.raw_mode {
+        if options.raw_mode && !crossterm::terminal::is_raw_mode_enabled()? {
             crossterm::terminal::enable_raw_mode()?;
             guard.raw_enabled = true;
         }

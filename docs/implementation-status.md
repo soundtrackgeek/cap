@@ -14,6 +14,7 @@ feature commands are still being implemented. No live journal is a test fixture.
 | WP07 | `01a0a0bc-810d-7e42-a5d9-8bc6d7767da9` | `C:\Users\jtill\.codex\worktrees\48b0\cap` | `codex/cap-personality` | accepted `66dcfe4` + `ce5dd49`; idle |
 | WP02 | `01a0a0be-0e57-7f41-9968-52050b5d0ddb` | `C:\Users\jtill\.codex\worktrees\f687\capsule_tauri` | `codex/cap-capture-core` | active; base `d1a02b8` |
 | WP03 | `01a0a0be-81fd-7f41-b949-a88d04f9eaf8` | `C:\Users\jtill\.codex\worktrees\638b\capsule_tauri` | `codex/cap-context` | active; base `d1a02b8` |
+| WP06 | `01a0a0e4-8c56-7431-ad98-2185e98d377f` | `C:\Users\jtill\.codex\worktrees\7b2c\cap` | `codex/cap-reads` | active; base `3b5182f` |
 
 Every worker uses `gpt-5.6-luna` with `max` reasoning. Owned files and dependencies
 are specified in PLAN.md and each task brief. WP02/WP03 communicate directly about
@@ -39,5 +40,10 @@ Accepted evidence:
 - Native Capsule QA build (0.37.0 + core `d1a02b8`) succeeded with an isolated
   app identity, WebView directory and synthetic journal. UI verification is
   pending because the desktop returned access denied while showing a screen saver.
+- Native console interruption uncovered output-only raw mode swallowing Ctrl+C.
+  Root fixed the input-mode ownership and confirmed live frames before process
+  completion, Ctrl+C cancellation/cursor restoration, and a separate targeted
+  CTRL_BREAK child probe returning exit 130 after 816 ms. This proves console
+  behavior, not a Windows Terminal visual recording.
 
 WP05, WP06, WP08–WP12 and the release/native acceptance gates remain outstanding.
