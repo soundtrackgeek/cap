@@ -10,8 +10,10 @@ journals; it accepts no existing journal path. `-- --bench` measures the core
 on synthetic 1k/10k/100k-entry journals (three process samples per size).
 
 A command-line companion for [Capsule](https://github.com/soundtrackgeek/capsule_tauri), currently in development.
-Capture a journal entry from the terminal, using Capsule's active database,
-location settings and weather, with a little color-cli ceremony when it saves.
+The Windows delivery scripts build a locked native release archive and install
+it per-user without requiring administrator rights. Capture uses Capsule's
+active database, location settings and weather, with a little color-cli
+ceremony when it saves.
 
 Implementation is in progress on `codex/cap-integration`. The executable capture
 path is covered by disposable synthetic-journal process tests; live-journal and
@@ -34,6 +36,8 @@ cap --db .\capsule.db search 'tag:work after:2026-01-01'
   recovery, color-cli reuse, visual effects, accessibility and release criteria.
 - [PLAN.md](PLAN.md): feature ownership, Luna task/worktree waves, review loops,
   integration gates and evidence required before release.
+- [docs/windows-install.md](docs/windows-install.md): Windows packaging,
+  installation, update/uninstall, PATH safety and isolated smoke verification.
 - [CHANGELOG.md](CHANGELOG.md): repository history.
 
 Implementation uses a native Rust `cap.exe`, a shared headless
@@ -135,3 +139,13 @@ To verify console cancellation without journal access, build
 `cargo build --example fx_interrupt_probe --locked` and run
 `target\debug\examples\fx_interrupt_probe.exe target\debug\cap.exe` in a console.
 The probe interrupts only its synthetic child process and checks exit code 130.
+
+To make a local Windows archive from a reviewed checkout, run
+`.\scripts\package.ps1 -OutputDirectory .\dist -ExpectedCoreRevision <sha>`.
+The packager requires a clean checkout by default (use `-AllowDirty` only for a
+clearly local development archive). The archive contains `cap.exe`, SHA-256 manifests, notices, provenance and
+per-user `install.ps1`/`uninstall.ps1` scripts. Installation defaults to
+`%LOCALAPPDATA%\Programs\cap\bin`; only that directory is added to user PATH,
+and no shell profile is changed unless `-ActivateCompletions` is explicitly
+requested. See [docs/windows-install.md](docs/windows-install.md) for update,
+uninstall and temporary-root smoke commands.

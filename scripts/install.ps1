@@ -1,0 +1,643 @@
+[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
+param(
+    [Parameter(Position = 0)]
+    [string]$SourcePath,
+
+    [string]$InstallRoot,
+    [string]$ChecksumPath,
+    [string]$PackageRoot,
+    [string]$PathStatePath,
+    [string]$CompletionProfilePath,
+    [switch]$SkipPath,
+    [switch]$ActivateCompletions,
+    [switch]$Force,
+    [switch]$PassThru
+)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+function ConvertTo-AbsolutePath {
+    param(
+        [Parameter(Mandatory = $true)] [string]$Path,
+        [switch]$MustExist
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        throw 'A non-empty path is required.'
+    }
+    $expanded = [Environment]::ExpandEnvironmentVariables($Path)
+    $absolute = [IO.Path]::GetFullPath($expanded)
+    if ($MustExist -and -not (Test-Path -LiteralPath $absolute -PathType Leaf)) {
+        throw "File not found: $absolute"
+    }
+    return $absolute
+}
+
+function Get-PathKey {
+    param([Parameter(Mandatory = $true)] [string]$Path)
+
+    $absolute = [IO.Path]::GetFullPath($Path)
+    $absolute = $absolute.TrimEnd([char[]]@([char]92, [char]47))
+    if ($absolute.Length -eq 2 -and $absolute[1] -eq ':') {
+        $absolute += [char]92
+    }
+    return $absolute
+}
+
+function Assert-SafeInstallRoot {
+    param([Parameter(Mandatory = $true)] [string]$Path)
+
+    $root = Get-PathKey (ConvertTo-AbsolutePath $Path)
+    $pathRoot = [IO.Path]::GetPathRoot($root)
+    if ([string]::IsNullOrWhiteSpace($pathRoot) -or $root -eq $pathRoot) {
+        throw "Refusing to use a drive or filesystem root as the cap install root: $root"
+    }
+    if ($root.Length -lt ($pathRoot.Length + 3)) {
+        throw "Refusing an unexpectedly broad cap install root: $root"
+    }
+    return $root
+}
+
+function Assert-UnderRoot {
+    param(
+        [Parameter(Mandatory = $true)] [string]$Path,
+        [Parameter(Mandatory = $true)] [string]$Root
+    )
+
+    $pathKey = Get-PathKey (ConvertTo-AbsolutePath $Path)
+    $rootKey = Get-PathKey (ConvertTo-AbsolutePath $Root)
+    if ($pathKey -ne $rootKey -and -not $pathKey.StartsWith($rootKey + [char]92, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Refusing a path outside the cap install root. Path: $pathKey Root: $rootKey"
+    }
+    return $pathKey
+}
+
+function Assert-NoReparsePath {
+    param([Parameter(Mandatory = $true)] [string]$Path)
+
+    $probe = Get-PathKey (ConvertTo-AbsolutePath $Path)
+    while (-not [string]::IsNullOrWhiteSpace($probe)) {
+        if (Test-Path -LiteralPath $probe) {
+            $item = Get-Item -LiteralPath $probe -Force
+            if (($item.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
+                throw "Refusing a reparse-point install path: $probe"
+            }
+        }
+        $parent = [IO.Path]::GetDirectoryName($probe)
+        if ([string]::IsNullOrWhiteSpace($parent) -or $parent -ieq $probe) { break }
+        $probe = Get-PathKey $parent
+    }
+}
+
+function New-DirectoryLiteral {
+    param([Parameter(Mandatory = $true)] [string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
+        [IO.Directory]::CreateDirectory($Path) | Out-Null
+    }
+    return (Get-PathKey $Path)
+}
+
+function Get-Sha256 {
+    param([Parameter(Mandatory = $true)] [string]$Path)
+
+    try {
+        return (Get-FileHash -LiteralPath $Path -Algorithm SHA256 -ErrorAction Stop).Hash.ToLowerInvariant()
+    }
+    catch {
+        $algorithm = [Security.Cryptography.SHA256]::Create()
+        $stream = [IO.File]::OpenRead($Path)
+        try {
+            return ([BitConverter]::ToString($algorithm.ComputeHash($stream))).Replace('-', '').ToLowerInvariant()
+        }
+        finally {
+            $stream.Dispose()
+            $algorithm.Dispose()
+        }
+    }
+}
+
+function Read-ExpectedSha256 {
+    param(
+        [Parameter(Mandatory = $true)] [string]$Path,
+        [Parameter(Mandatory = $true)] [string]$FileName
+    )
+
+    foreach ($line in [IO.File]::ReadAllLines($Path)) {
+        $trimmed = $line.Trim()
+        if ($trimmed.Length -eq 0 -or $trimmed.StartsWith('#')) {
+            continue
+        }
+        if ($trimmed -notmatch '^([0-9A-Fa-f]{64})\s+\*?(.+?)\s*$') {
+            continue
+        }
+        $name = $Matches[2].Trim().Replace('/', '\')
+        $leaf = [IO.Path]::GetFileName($name)
+        if ($leaf -ieq $FileName -or $name -ieq "bin\$FileName") {
+            return $Matches[1].ToLowerInvariant()
+        }
+    }
+    throw "Checksum manifest does not contain a SHA-256 entry for ${FileName}: $Path"
+}
+
+function Publish-TextFile {
+    param(
+        [Parameter(Mandatory = $true)] [string]$Destination,
+        [Parameter(Mandatory = $true)] [AllowEmptyString()] [string]$Content
+    )
+
+    $parent = [IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($Destination))
+    New-DirectoryLiteral $parent | Out-Null
+    $temporary = "$Destination.tmp.$([guid]::NewGuid().ToString('N'))"
+    [IO.File]::WriteAllText($temporary, $Content, [Text.UTF8Encoding]::new($false))
+    try {
+        if (Test-Path -LiteralPath $Destination -PathType Leaf) {
+            $backup = "$Destination.previous.$([guid]::NewGuid().ToString('N'))"
+            [IO.File]::Replace($temporary, $Destination, $backup, $true)
+            if (Test-Path -LiteralPath $backup -PathType Leaf) { Remove-Item -LiteralPath $backup -Force }
+        }
+        else {
+            [IO.File]::Move($temporary, $Destination)
+        }
+    }
+    finally {
+        if (Test-Path -LiteralPath $temporary -PathType Leaf) {
+            Remove-Item -LiteralPath $temporary -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+function Get-PathValue {
+    param([string]$StatePath)
+
+    if (-not [string]::IsNullOrWhiteSpace($StatePath)) {
+        $path = ConvertTo-AbsolutePath $StatePath
+        if (Test-Path -LiteralPath $path -PathType Leaf) {
+            return [IO.File]::ReadAllText($path)
+        }
+        return ''
+    }
+    $value = [Environment]::GetEnvironmentVariable('Path', 'User')
+    if ($null -eq $value) {
+        return ''
+    }
+    return [string]$value
+}
+
+function Set-PathValue {
+    param(
+        [string]$StatePath,
+        [Parameter(Mandatory = $true)] [string]$Value
+    )
+
+    if (-not [string]::IsNullOrWhiteSpace($StatePath)) {
+        $path = ConvertTo-AbsolutePath $StatePath
+        Publish-TextFile -Destination $path -Content $Value
+        return
+    }
+    [Environment]::SetEnvironmentVariable('Path', $Value, 'User')
+}
+
+function Test-PathTokenMatches {
+    param(
+        [string]$Token,
+        [Parameter(Mandatory = $true)] [string]$Expected
+    )
+
+    $candidate = $Token.Trim()
+    if ($candidate.Length -ge 2 -and $candidate[0] -eq '"' -and $candidate[$candidate.Length - 1] -eq '"') {
+        $candidate = $candidate.Substring(1, $candidate.Length - 2)
+    }
+    if ([string]::IsNullOrWhiteSpace($candidate)) {
+        return $false
+    }
+    try {
+        return (Get-PathKey $candidate) -ieq (Get-PathKey $Expected)
+    }
+    catch {
+        return $false
+    }
+}
+
+function Add-UserPathEntry {
+    param(
+        [Parameter(Mandatory = $true)] [string]$BinPath,
+        [string]$StatePath
+    )
+
+    $before = Get-PathValue $StatePath
+    $parts = if ($before.Length -eq 0) { @() } else { $before.Split(';', [StringSplitOptions]::None) }
+    foreach ($part in $parts) {
+        if (Test-PathTokenMatches $part $BinPath) {
+            return [pscustomobject]@{ Before = $before; After = $before; Changed = $false }
+        }
+    }
+    $after = if ($before.Length -eq 0) { $BinPath } elseif ($before.EndsWith(';')) { $before + $BinPath } else { $before + ';' + $BinPath }
+    Set-PathValue -StatePath $StatePath -Value $after
+    return [pscustomobject]@{ Before = $before; After = $after; Changed = $true }
+}
+
+function Remove-UserPathEntry {
+    param(
+        [Parameter(Mandatory = $true)] [string]$BinPath,
+        [string]$StatePath,
+        [bool]$OnlyIfAdded = $true
+    )
+
+    $before = Get-PathValue $StatePath
+    if ($OnlyIfAdded -and $before.Length -eq 0) {
+        return [pscustomobject]@{ Before = $before; After = $before; Changed = $false }
+    }
+    $parts = if ($before.Length -eq 0) { @() } else { $before.Split(';', [StringSplitOptions]::None) }
+    $removed = $false
+    $kept = [Collections.Generic.List[string]]::new()
+    foreach ($part in $parts) {
+        if (-not $removed -and (Test-PathTokenMatches $part $BinPath)) {
+            $removed = $true
+        }
+        else {
+            [void]$kept.Add($part)
+        }
+    }
+    if (-not $removed) {
+        return [pscustomobject]@{ Before = $before; After = $before; Changed = $false }
+    }
+    $after = [string]::Join(';', $kept)
+    Set-PathValue -StatePath $StatePath -Value $after
+    return [pscustomobject]@{ Before = $before; After = $after; Changed = $true }
+}
+
+function Get-Receipt {
+    param([Parameter(Mandatory = $true)] [string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return $null
+    }
+    try {
+        return (Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json)
+    }
+    catch {
+        throw "The existing cap install receipt is unreadable: $Path"
+    }
+}
+
+function Get-PackageRootForSource {
+    param([Parameter(Mandatory = $true)] [string]$Source)
+
+    $parent = [IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($Source))
+    if (Test-Path -LiteralPath (Join-Path $parent 'checksums.sha256') -PathType Leaf) {
+        return Get-PathKey $parent
+    }
+    $grandparent = [IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($parent))
+    if (Test-Path -LiteralPath (Join-Path $grandparent 'checksums.sha256') -PathType Leaf) {
+        return Get-PathKey $grandparent
+    }
+    return $null
+}
+
+function Get-RelativePath {
+    param(
+        [Parameter(Mandatory = $true)] [string]$Path,
+        [Parameter(Mandatory = $true)] [string]$Root
+    )
+
+    $pathKey = Assert-UnderRoot $Path $Root
+    $rootKey = Get-PathKey (ConvertTo-AbsolutePath $Root)
+    if ($pathKey -eq $rootKey) {
+        return ''
+    }
+    return $pathKey.Substring($rootKey.Length + 1)
+}
+
+function Test-FileAvailableForReplacement {
+    param([Parameter(Mandatory = $true)] [string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return
+    }
+    $stream = $null
+    try {
+        $stream = [IO.File]::Open($Path, [IO.FileMode]::Open, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+    }
+    catch {
+        throw "Cannot replace $Path because it is running or in use. Close cap and try again."
+    }
+    finally {
+        if ($null -ne $stream) {
+            $stream.Dispose()
+        }
+    }
+}
+
+function Get-ExistingCapCommandPaths {
+    $paths = [Collections.Generic.List[string]]::new()
+    foreach ($name in @('cap', 'cap.exe')) {
+        foreach ($command in @(Get-Command $name -All -ErrorAction SilentlyContinue)) {
+            if ($command.CommandType -ne 'Application') {
+                continue
+            }
+            try {
+                [void]$paths.Add((Get-PathKey $command.Source))
+            }
+            catch {
+                continue
+            }
+        }
+    }
+    return @($paths | Select-Object -Unique)
+}
+
+function Copy-PackageFile {
+    param(
+        [Parameter(Mandatory = $true)] [string]$Source,
+        [Parameter(Mandatory = $true)] [string]$Destination,
+        [Parameter(Mandatory = $true)] [string]$Root
+    )
+
+    Assert-UnderRoot $Destination $Root | Out-Null
+    $parent = [IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($Destination))
+    New-DirectoryLiteral $parent | Out-Null
+    $temporary = "$Destination.tmp.$([guid]::NewGuid().ToString('N'))"
+    Copy-Item -LiteralPath $Source -Destination $temporary -Force
+    try {
+        if (Test-Path -LiteralPath $Destination -PathType Leaf) {
+            Test-FileAvailableForReplacement $Destination
+            $backup = "$Destination.previous.$([guid]::NewGuid().ToString('N'))"
+            [IO.File]::Replace($temporary, $Destination, $backup, $true)
+            if (Test-Path -LiteralPath $backup -PathType Leaf) { Remove-Item -LiteralPath $backup -Force }
+        }
+        else {
+            [IO.File]::Move($temporary, $Destination)
+        }
+    }
+    finally {
+        if (Test-Path -LiteralPath $temporary -PathType Leaf) {
+            Remove-Item -LiteralPath $temporary -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+function Write-CompletionActivation {
+    param(
+        [Parameter(Mandatory = $true)] [string]$CapPath,
+        [Parameter(Mandatory = $true)] [string]$InstallRoot,
+        [string]$ProfilePath,
+        [string]$PackageRoot
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ProfilePath)) {
+        $ProfilePath = $PROFILE
+    }
+    $profileAbsolute = ConvertTo-AbsolutePath $ProfilePath
+    $completionPath = Join-Path $InstallRoot 'cap-completions.ps1'
+    if (-not [string]::IsNullOrWhiteSpace($PackageRoot) -and (Test-Path -LiteralPath (Join-Path $PackageRoot 'cap-completions.ps1') -PathType Leaf)) {
+        Copy-PackageFile -Source (Join-Path $PackageRoot 'cap-completions.ps1') -Destination $completionPath -Root $InstallRoot
+    }
+    else {
+        $completionOutput = & $CapPath completions powershell 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            throw "cap completions powershell failed with exit code $LASTEXITCODE"
+        }
+        Publish-TextFile -Destination $completionPath -Content ([string]::Join([Environment]::NewLine, @($completionOutput)) + [Environment]::NewLine)
+    }
+    $escaped = $completionPath.Replace("'", "''")
+    $marker = "# cap completion activation (managed by cap installer)"
+    $line = "& '$escaped'"
+    $existing = if (Test-Path -LiteralPath $profileAbsolute -PathType Leaf) { [IO.File]::ReadAllText($profileAbsolute) } else { '' }
+    if ($existing -notmatch [regex]::Escape($marker)) {
+        $separator = if ($existing.Length -eq 0 -or $existing.EndsWith("`n") -or $existing.EndsWith("`r")) { '' } else { [Environment]::NewLine }
+        Publish-TextFile -Destination $profileAbsolute -Content ($existing + $separator + $marker + [Environment]::NewLine + $line + [Environment]::NewLine)
+    }
+    return [pscustomobject]@{ Path = $completionPath; Profile = $profileAbsolute; Marker = $marker; Line = $line }
+}
+
+$repoRoot = Get-PathKey ([IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($PSScriptRoot)))
+if ([string]::IsNullOrWhiteSpace($SourcePath)) {
+    $candidatePaths = @(
+        (Join-Path $PSScriptRoot '..\target\release\cap.exe'),
+        (Join-Path $PSScriptRoot 'bin\cap.exe')
+    )
+    foreach ($candidate in $candidatePaths) {
+        $candidateAbsolute = ConvertTo-AbsolutePath $candidate
+        if (Test-Path -LiteralPath $candidateAbsolute -PathType Leaf) {
+            $SourcePath = $candidateAbsolute
+            break
+        }
+    }
+}
+$source = ConvertTo-AbsolutePath $SourcePath -MustExist
+if ([string]::IsNullOrWhiteSpace($InstallRoot)) {
+    if ([string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)) {
+        throw 'LOCALAPPDATA is not set. Pass -InstallRoot explicitly for a per-user install.'
+    }
+    $InstallRoot = Join-Path $env:LOCALAPPDATA 'Programs\cap'
+}
+$root = Assert-SafeInstallRoot $InstallRoot
+Assert-NoReparsePath $root
+$bin = Get-PathKey (Join-Path $root 'bin')
+$destination = Get-PathKey (Join-Path $bin 'cap.exe')
+$receiptPath = Get-PathKey (Join-Path $root '.cap-install.json')
+Assert-UnderRoot $bin $root | Out-Null
+Assert-UnderRoot $destination $root | Out-Null
+Assert-UnderRoot $receiptPath $root | Out-Null
+
+if ((Get-PathKey $source) -ieq $destination) {
+    throw 'The source executable is already the destination. Install from a build or package copy.'
+}
+
+$existingReceipt = Get-Receipt $receiptPath
+$destinationExists = Test-Path -LiteralPath $destination -PathType Leaf
+if ($destinationExists -and $null -eq $existingReceipt -and -not $Force) {
+    throw "An existing cap.exe was found without a cap install receipt: $destination. Use -Force only after reviewing it."
+}
+if ($destinationExists -and $null -ne $existingReceipt -and -not $Force -and -not [string]::IsNullOrWhiteSpace([string]$existingReceipt.binarySha256)) {
+    $currentBinaryHash = Get-Sha256 $destination
+    if ($currentBinaryHash -ine [string]$existingReceipt.binarySha256) {
+        throw "The existing cap.exe does not match its install receipt. Use -Force only after reviewing the replacement."
+    }
+}
+if (-not $destinationExists -and -not $Force) {
+    foreach ($existingCommand in (Get-ExistingCapCommandPaths)) {
+        if ($existingCommand -ine $destination) {
+            throw "A different cap command already resolves at $existingCommand. Use -Force only after reviewing the collision."
+        }
+    }
+}
+
+$package = if ([string]::IsNullOrWhiteSpace($PackageRoot)) { Get-PackageRootForSource $source } else { ConvertTo-AbsolutePath $PackageRoot }
+if ($null -ne $package -and -not (Test-Path -LiteralPath $package -PathType Container)) {
+    throw "Package root not found: $package"
+}
+if ([string]::IsNullOrWhiteSpace($ChecksumPath) -and $null -ne $package) {
+    $candidateChecksum = Join-Path $package 'checksums.sha256'
+    if (Test-Path -LiteralPath $candidateChecksum -PathType Leaf) {
+        $ChecksumPath = $candidateChecksum
+    }
+}
+$expectedHash = $null
+if (-not [string]::IsNullOrWhiteSpace($ChecksumPath)) {
+    $checksumAbsolute = ConvertTo-AbsolutePath $ChecksumPath -MustExist
+    $expectedHash = Read-ExpectedSha256 -Path $checksumAbsolute -FileName 'cap.exe'
+}
+$sourceHash = Get-Sha256 $source
+if ($null -ne $expectedHash -and $sourceHash -ine $expectedHash) {
+    throw "Source SHA-256 mismatch. Expected $expectedHash, got $sourceHash."
+}
+
+if ($WhatIfPreference) {
+    return
+}
+
+$createdRoot = -not (Test-Path -LiteralPath $root -PathType Container)
+$oldPathValue = Get-PathValue $PathStatePath
+$pathChanged = $false
+$backup = $null
+$temporary = $null
+$metadataRelative = [Collections.Generic.List[string]]::new()
+$profileActivation = $null
+$binaryPublished = $false
+try {
+    New-DirectoryLiteral $root | Out-Null
+    New-DirectoryLiteral $bin | Out-Null
+    Test-FileAvailableForReplacement $destination
+    $temporary = "$destination.tmp.$([guid]::NewGuid().ToString('N'))"
+    Copy-Item -LiteralPath $source -Destination $temporary -Force
+    $stagedHash = Get-Sha256 $temporary
+    if ($stagedHash -ine $sourceHash) {
+        throw 'The staged executable hash changed while copying; install was aborted.'
+    }
+    if ($destinationExists) {
+        $backup = "$destination.previous.$([guid]::NewGuid().ToString('N'))"
+        Assert-UnderRoot $backup $root | Out-Null
+        [IO.File]::Move($destination, $backup)
+    }
+    [IO.File]::Move($temporary, $destination)
+    $temporary = $null
+    $binaryPublished = $true
+
+    if (-not $SkipPath) {
+        $pathResult = Add-UserPathEntry -BinPath $bin -StatePath $PathStatePath
+        $pathChanged = $pathResult.Changed
+    }
+
+    if ($null -ne $package) {
+        $copyCandidates = @(
+            @{ Relative = 'checksums.sha256'; Source = (Join-Path $package 'checksums.sha256') },
+            @{ Relative = 'manifest.json'; Source = (Join-Path $package 'manifest.json') },
+            @{ Relative = 'NOTICE.txt'; Source = (Join-Path $package 'NOTICE.txt') },
+            @{ Relative = 'docs\provenance\color-cli.md'; Source = (Join-Path $package 'docs\provenance\color-cli.md') },
+            @{ Relative = 'docs\windows-install.md'; Source = (Join-Path $package 'docs\windows-install.md') },
+            @{ Relative = 'uninstall.ps1'; Source = (Join-Path $package 'uninstall.ps1') }
+        )
+        foreach ($candidate in $copyCandidates) {
+            if (-not (Test-Path -LiteralPath $candidate.Source -PathType Leaf)) {
+                continue
+            }
+            $target = Join-Path $root $candidate.Relative
+            $wasOwned = $false
+            if ($null -ne $existingReceipt -and $null -ne $existingReceipt.files) {
+                $wasOwned = @($existingReceipt.files) -contains $candidate.Relative
+            }
+            if ((Test-Path -LiteralPath $target -PathType Leaf) -and -not $wasOwned -and -not $Force) {
+                throw "Refusing to overwrite unrelated install content: $target"
+            }
+            Copy-PackageFile -Source $candidate.Source -Destination $target -Root $root
+            [void]$metadataRelative.Add($candidate.Relative)
+        }
+    }
+
+    if ($null -ne $existingReceipt -and $null -ne $existingReceipt.files) {
+        foreach ($previousRelative in @($existingReceipt.files)) {
+            $previous = ([string]$previousRelative).Replace('/', '\')
+            if ($previous -ieq 'bin\cap.exe' -or $metadataRelative -contains $previous) { continue }
+            $previousTarget = Join-Path $root $previous
+            if (Test-Path -LiteralPath $previousTarget -PathType Leaf) {
+                [void]$metadataRelative.Add($previous)
+            }
+        }
+    }
+
+    if ($ActivateCompletions) {
+        $profileActivation = Write-CompletionActivation -CapPath $destination -InstallRoot $root -ProfilePath $CompletionProfilePath -PackageRoot $package
+        [void]$metadataRelative.Add((Get-RelativePath $profileActivation.Path $root))
+    }
+    elseif ($null -ne $existingReceipt -and $null -ne $existingReceipt.completionActivation) {
+        $profileActivation = $existingReceipt.completionActivation
+    }
+
+    $allFiles = [Collections.Generic.List[string]]::new()
+    [void]$allFiles.Add('bin\cap.exe')
+    foreach ($metadata in $metadataRelative) {
+        if (-not ($allFiles -contains $metadata)) {
+            [void]$allFiles.Add($metadata)
+        }
+    }
+    $fileHashes = [ordered]@{}
+    foreach ($relative in $allFiles) {
+        $ownedPath = Assert-UnderRoot (Join-Path $root $relative) $root
+        if (Test-Path -LiteralPath $ownedPath -PathType Leaf) {
+            $fileHashes[$relative] = Get-Sha256 $ownedPath
+        }
+    }
+    $receipt = [ordered]@{
+        schemaVersion = 1
+        installerVersion = '0.2.0-dev.23'
+        installedAtUtc = (Get-Date).ToUniversalTime().ToString('o')
+        installRoot = $root
+        binPath = $bin
+        binaryPath = $destination
+        binarySha256 = $sourceHash
+        files = @($allFiles.ToArray())
+        fileHashes = $fileHashes
+        pathEntry = ($pathChanged -or ($null -ne $existingReceipt -and $existingReceipt.pathEntry -eq $true))
+        pathStatePath = if ([string]::IsNullOrWhiteSpace($PathStatePath)) { $null } else { (ConvertTo-AbsolutePath $PathStatePath) }
+        completionActivation = $profileActivation
+    }
+    Publish-TextFile -Destination $receiptPath -Content (($receipt | ConvertTo-Json -Depth 8) + [Environment]::NewLine)
+
+    if ($null -ne $backup -and (Test-Path -LiteralPath $backup -PathType Leaf)) {
+        Test-FileAvailableForReplacement $backup
+        Remove-Item -LiteralPath $backup -Force
+    }
+}
+catch {
+    $failure = $_
+    if ($null -ne $temporary -and (Test-Path -LiteralPath $temporary -PathType Leaf)) {
+        Remove-Item -LiteralPath $temporary -Force -ErrorAction SilentlyContinue
+    }
+    if ($binaryPublished -and (Test-Path -LiteralPath $destination -PathType Leaf)) {
+        Test-FileAvailableForReplacement $destination
+        Remove-Item -LiteralPath $destination -Force -ErrorAction SilentlyContinue
+    }
+    if ($null -ne $backup -and (Test-Path -LiteralPath $backup -PathType Leaf)) {
+        [IO.File]::Move($backup, $destination)
+    }
+    if ($pathChanged) {
+        try { Set-PathValue -StatePath $PathStatePath -Value $oldPathValue } catch { }
+    }
+    throw $failure
+}
+
+$result = [pscustomobject]@{
+    ok = $true
+    action = if ($destinationExists) { 'updated' } else { 'installed' }
+    installRoot = $root
+    binaryPath = $destination
+    sha256 = $sourceHash
+    pathUpdated = $pathChanged
+    completionActivated = $ActivateCompletions.IsPresent
+    receiptPath = $receiptPath
+}
+if ($PassThru) {
+    $result | ConvertTo-Json -Depth 8
+}
+else {
+    Write-Output ("cap {0} at {1} (SHA-256 {2})" -f $result.action, $destination, $sourceHash)
+    if (-not $SkipPath) {
+        Write-Output "User PATH contains $bin (a fresh PowerShell session will see it)."
+    }
+    if ($ActivateCompletions) {
+        Write-Output 'PowerShell completion activation was enabled explicitly.'
+    }
+}
