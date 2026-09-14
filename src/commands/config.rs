@@ -3,6 +3,7 @@
 use crate::app::{AppError, CommandOutput};
 use crate::cli::{ConfigAction, GlobalOptions};
 use crate::preferences::{ConfigStore, PreferenceError, Preferences};
+use cap_effects::sanitize_text;
 use serde_json::json;
 
 pub fn run(action: &ConfigAction, _global: &GlobalOptions) -> Result<CommandOutput, AppError> {
@@ -94,7 +95,7 @@ fn format_preferences(preferences: &Preferences) -> String {
         ),
         format!(
             "editor_executable = {}",
-            value["editorExecutable"].as_str().unwrap_or("none")
+            safe_display(value["editorExecutable"].as_str().unwrap_or("none"))
         ),
         format!(
             "editor_args = {}",
@@ -102,6 +103,13 @@ fn format_preferences(preferences: &Preferences) -> String {
         ),
     ]
     .join("\n")
+}
+
+fn safe_display(value: &str) -> String {
+    // Config output is intentionally unstyled, but paths are still external
+    // input. Strip terminal controls and flatten line breaks so an editor
+    // preference cannot inject OSC/CSI output or forge additional config rows.
+    sanitize_text(value).replace('\n', " ")
 }
 
 fn preference_error(error: PreferenceError) -> AppError {
@@ -181,5 +189,24 @@ mod tests {
             .unwrap();
         assert_eq!(exe.to_string_lossy(), r#"C:\Program Files\Editor.exe"#);
         assert_eq!(args, ["--wait", r#"C:\draft file.md"#]);
+    }
+
+    #[test]
+    fn human_config_output_sanitizes_terminal_controls_but_json_keeps_value() {
+        let directory = tempdir().unwrap();
+        let store = ConfigStore::at_dir(directory.path());
+        let raw = "C:\\Editor\\evil\x1b]8;;https://example.test\x07\x1b\\.exe";
+        run_with_store(
+            &ConfigAction::Set {
+                key: "editor.executable".to_owned(),
+                value: raw.to_owned(),
+            },
+            &store,
+        )
+        .unwrap();
+        let shown = run_with_store(&ConfigAction::Show, &store).unwrap();
+        assert!(!shown.human.contains('\x1b'));
+        assert!(!shown.human.contains('\x07'));
+        assert_eq!(shown.data["preferences"]["editorExecutable"], raw);
     }
 }
