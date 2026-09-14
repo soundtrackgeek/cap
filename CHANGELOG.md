@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.2.0-dev.19 - 2026-09-14
+
+### Added
+
+- Connected quick capture from positional text, files and stdin with metadata,
+  dry-run, JSON/quiet/plain output, immediate saved acknowledgements and
+  post-commit location/weather enrichment.
+- Added atomic cap-local pending records, receipts, explicit-ID bindings,
+  conservative discard tombstones, status/recover commands, frozen-request
+  replay for future writers and a 15-minute identity-bound weather cache.
+- Added process coverage for idempotency/conflicts, database replacement,
+  simultaneous same-ID captures, lock contention, crash/unknown commit recovery,
+  failed receipt/binding writes, tombstones and pending-draft inspection.
+- Added a fixture-root-authorized, non-default `test-hooks` feature for the
+  executable recovery fault matrix.
+
+### Changed
+
+- Added a 150 ms TTY-only precommit working indicator and a cap-effects seal
+  reveal capped at 650 ms after confirmed commit, with narrow-layout wrapping,
+  weather-derived accents and terminal cursor restoration.
+
+### Fixed
+
+- Explicit presentation validation now precedes capture state/backup work;
+  database replacement maps to exit 4 while missing/setup errors remain exit 3.
+- Unknown/committed outcomes remain retry-safe when local receipt or binding
+  persistence fails; expired receipts are removed only under a per-record lock
+  with a durable binding.
+
 ## 0.2.0-dev.18 - 2026-09-14
 
 ### Changed

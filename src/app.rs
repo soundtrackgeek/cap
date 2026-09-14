@@ -55,6 +55,9 @@ pub fn execute(cli: &Cli) -> Result<CommandOutput, AppError> {
         ));
     }
     match &cli.command {
+        None => crate::commands::add::run_default(None, &cli.global),
+        Some(Command::Entry(words)) => crate::commands::add::run_default(Some(words), &cli.global),
+        Some(Command::Add(args)) => crate::commands::add::run(args, &cli.global),
         Some(Command::Theme { action }) => crate::commands::theme::run(action, &cli.global),
         Some(Command::Config { action }) => crate::commands::config::run(action, &cli.global),
         Some(Command::Completions { shell }) => {
@@ -69,6 +72,13 @@ pub fn execute(cli: &Cli) -> Result<CommandOutput, AppError> {
         Some(Command::Moods(args)) => crate::commands::moods::run(args, &cli.global),
         Some(Command::Context) => crate::commands::context::run(&cli.global),
         Some(Command::Doctor) => crate::commands::doctor::run(&cli.global),
+        Some(Command::Status { capture_id }) => {
+            crate::commands::status::run(capture_id, &cli.global)
+        }
+        Some(Command::Recover { action }) => crate::commands::recover::run(action, &cli.global),
+        Some(Command::Enrich { identifier }) => {
+            crate::commands::enrich::run(identifier, &cli.global)
+        }
         _ => Err(AppError::new(
             "NOT_IMPLEMENTED",
             "This command is not connected yet in the foundation development build.",

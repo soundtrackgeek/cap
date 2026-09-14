@@ -1,12 +1,16 @@
+pub mod add;
 pub mod completions;
 pub mod config;
 pub mod context;
 pub mod doctor;
+pub mod enrich;
 pub mod fx;
 pub mod moods;
 pub mod recent;
+pub mod recover;
 pub mod search;
 pub mod show;
+pub mod status;
 pub mod tags;
 pub mod theme;
 pub mod today;

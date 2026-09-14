@@ -4,14 +4,21 @@ resolver = "2"
 
 [package]
 name = "cap"
-version = "0.2.0-dev.18"
+version = "0.2.0-dev.19"
 edition = "2021"
 rust-version = "1.95"
 description = "A small ceremony for everyday Capsule memories"
 
+[features]
+default = []
+test-hooks = []
+
 [dependencies]
-capsule-core = { git = "https://github.com/soundtrackgeek/capsule_tauri.git", rev = "4272d53954b210227696b3e6ce0bac5d44c81caa" }
+capsule-core = { git = "https://github.com/soundtrackgeek/capsule_tauri.git", rev = "24e0b59c306b09cf3e0a6f46c4307be354378f16" }
 cap-effects = { path = "crates/cap-effects" }
+chrono = { version = "0.4", features = ["serde"] }
+anyhow = "1"
+sha2 = "0.10"
 clap = { version = "4", features = ["derive"] }
 ctrlc = "3.5"
 serde = { version = "1", features = ["derive"] }
