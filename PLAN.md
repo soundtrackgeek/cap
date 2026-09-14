@@ -2,8 +2,9 @@
 
 Plan version: 0.1.0 · 2026-09-14
 Authority for intended behavior: [SPEC.md](SPEC.md).
-Status: ready for a later implementation session; no agents, worktrees or feature
-branches have been created by this planning revision.
+Status: execution in progress using separate Luna tasks and Git worktrees.
+Accepted packages, active owners, commits and verification evidence are tracked
+in [implementation status](docs/implementation-status.md).
 
 ## 1. Delivery model
 

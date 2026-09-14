@@ -1,6 +1,8 @@
 # cap — a little ceremony for everyday memories
 
-Status: proposed implementation specification. No CLI has been implemented yet.
+Status: implementation in progress. The command grammar, shared-core extraction,
+effects, themes, preferences and completions are integrated. Capture and the
+remaining R1/R2 features are under review; see [implementation status](docs/implementation-status.md).
 Specification version: 0.1.0 · 2026-09-14
 
 ## 1. Product promise

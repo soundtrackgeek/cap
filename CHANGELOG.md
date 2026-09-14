@@ -2,6 +2,11 @@
 
 ## [0.2.0-dev.14] - 2026-09-14
 
+### Changed
+
+- Updated specification and plan status to reflect the running implementation,
+  with independent capture-process review evidence and remaining gates.
+
 ### Fixed
 
 - Output-only effects preserve processed input so Ctrl+C reaches the CLI handler;

@@ -45,5 +45,16 @@ Accepted evidence:
   completion, Ctrl+C cancellation/cursor restoration, and a separate targeted
   CTRL_BREAK child probe returning exit 130 after 816 ms. This proves console
   behavior, not a Windows Terminal visual recording.
+- Windows CI also passed for `f9f614e`, including the cancellation correction:
+  [run 34873434626](https://github.com/soundtrackgeek/cap/actions/runs/34873434626).
+- Root's independent process review of WP02 candidate `8ae93e4` passed eight
+  concurrent writers, kills after backup/before commit/after commit, read-only
+  reconciliation and exact-once replay, same-path database replacement rejection,
+  and backup-failure refusal. Integrity, references, FTS and retained backups were
+  checked. The combined sidecar/SQLite timeout failed at 19.5 seconds against a
+  15-second budget and was returned to the owner; WP02 is not yet accepted.
+- Preliminary shared-core measurements on new synthetic journals (three debug
+  process samples, filesystem cache uncontrolled): 1k entries 98–111 ms; 10k
+  311–313 ms; 100k 2536–2651 ms. These are not final CLI p50/p95 measurements.
 
 WP05, WP06, WP08–WP12 and the release/native acceptance gates remain outstanding.
