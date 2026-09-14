@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0-dev.20 - 2026-09-14
+
+### Fixed
+
+- `cap status` now retries missing receipt and explicit capture-ID binding
+  persistence after a confirmed journal commit, including body-free committed
+  pending records left by an earlier storage failure.
+
 ## 0.2.0-dev.19 - 2026-09-14
 
 ### Added

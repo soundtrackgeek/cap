@@ -14,16 +14,13 @@ pub fn run(capture_id: &str, global: &GlobalOptions) -> Result<CommandOutput, Ap
         .map_err(|error| AppError::new("INVALID_INPUT", error.to_string(), 2))?;
     let state =
         StateStore::from_env().map_err(|error| AppError::new("RECOVERY_STORAGE", error, 5))?;
-    if let Some(record) = state
+    let initial_receipt = state
         .read_receipt(&capture_id)
-        .map_err(|error| storage_error(error, 5))?
-    {
-        return output_for_record(&record, global);
-    }
-    let Some(_initial_record) = state
+        .map_err(|error| storage_error(error, 5))?;
+    let initial_pending = state
         .read_pending(&capture_id)
-        .map_err(|error| storage_error(error, 5))?
-    else {
+        .map_err(|error| storage_error(error, 5))?;
+    if initial_receipt.is_none() && initial_pending.is_none() {
         if state
             .read_tombstone(&capture_id)
             .map_err(|error| storage_error(error, 5))?
@@ -57,7 +54,7 @@ pub fn run(capture_id: &str, global: &GlobalOptions) -> Result<CommandOutput, Ap
             format!("No pending or committed capture named {capture_id}"),
             3,
         ));
-    };
+    }
 
     let _record_lock = state.lock(&capture_id).map_err(|error| match error {
         StateError::Busy(message) => AppError::new("CAPTURE_BUSY", message, 4),
@@ -69,7 +66,58 @@ pub fn run(capture_id: &str, global: &GlobalOptions) -> Result<CommandOutput, Ap
         .read_receipt(&capture_id)
         .map_err(|error| storage_error(error, 5))?
     {
-        return output_for_record(&receipt_record, global);
+        // A commit can be known before the local binding is durable (for
+        // example, a permissions/full-disk failure). Keep the receipt
+        // authoritative, but use a later status pass to finish the explicit
+        // capture-ID binding and clean the committed pending shadow.
+        let mut storage_warnings = Vec::new();
+        if receipt_record.explicit_capture_id
+            && state
+                .read_binding(&capture_id)
+                .map_err(|error| storage_error(error, 5))?
+                .is_none()
+        {
+            match state.write_binding(&receipt_record) {
+                Ok(()) => {
+                    if let Err(error) = state.remove_pending(&capture_id) {
+                        storage_warnings.push(format!(
+                            "Confirmed save, but committed pending cleanup failed: {error}"
+                        ));
+                    }
+                }
+                Err(error) => storage_warnings.push(format!(
+                    "Confirmed save, but capture-ID binding storage is unavailable: {error}"
+                )),
+            }
+        } else if receipt_record.explicit_capture_id
+            && state
+                .read_binding(&capture_id)
+                .map_err(|error| storage_error(error, 5))?
+                .is_some()
+        {
+            if let Err(error) = state.remove_pending(&capture_id) {
+                storage_warnings.push(format!(
+                    "Confirmed save, but committed pending cleanup failed: {error}"
+                ));
+            }
+        }
+        if receipt_record.is_expired(chrono::Utc::now())
+            && state
+                .read_binding(&capture_id)
+                .map_err(|error| storage_error(error, 5))?
+                .is_some()
+        {
+            return Err(AppError::new(
+                "CAPTURE_ID_EXPIRED",
+                format!(
+                    "Capture {capture_id} has expired; its durable binding prevents silent replay."
+                ),
+                2,
+            ));
+        }
+        let mut output = output_for_record(&receipt_record, global)?;
+        output.warnings.extend(storage_warnings);
+        return Ok(output);
     }
     let mut record = if let Some(latest) = state
         .read_pending(&capture_id)
@@ -157,6 +205,34 @@ pub fn run(capture_id: &str, global: &GlobalOptions) -> Result<CommandOutput, Ap
             }
             Err(error) => {
                 record.last_error = Some(error.to_string());
+            }
+        }
+    } else if record.state == RecoveryState::Committed {
+        // Receipt persistence may have failed after the journal commit. The
+        // committed pending record intentionally has no request body, but it
+        // still contains all facts needed to retry the local receipt/binding
+        // transition without touching Capsule again.
+        match state.write_receipt(&record) {
+            Ok(()) => match state.write_binding(&record) {
+                Ok(()) => {
+                    if let Err(error) = state.remove_pending(&capture_id) {
+                        storage_warnings.push(format!(
+                            "Confirmed save, but committed pending cleanup failed: {error}"
+                        ));
+                    }
+                }
+                Err(error) => {
+                    storage_warnings.push(format!(
+                        "Confirmed save, but capture-ID binding storage is unavailable: {error}"
+                    ));
+                    let _ = state.write_pending(&record);
+                }
+            },
+            Err(error) => {
+                storage_warnings.push(format!(
+                    "Confirmed save, but receipt storage is unavailable: {error}"
+                ));
+                let _ = state.write_pending(&record);
             }
         }
     }
