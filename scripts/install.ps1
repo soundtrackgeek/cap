@@ -732,11 +732,22 @@ catch {
         Remove-Item -LiteralPath $temporary -Force -ErrorAction SilentlyContinue
     }
     if ($binaryPublished -and (Test-Path -LiteralPath $destination -PathType Leaf)) {
-        Test-FileAvailableForReplacement $destination
-        Remove-Item -LiteralPath $destination -Force -ErrorAction SilentlyContinue
+        try {
+            Test-FileAvailableForReplacement $destination
+            Remove-Item -LiteralPath $destination -Force -ErrorAction Stop
+        }
+        catch {
+            Write-Warning "Could not remove the newly published binary during rollback: $destination. Review it before retrying."
+        }
     }
     if ($null -ne $backup -and (Test-Path -LiteralPath $backup -PathType Leaf)) {
-        [IO.File]::Move($backup, $destination)
+        try {
+            if (Test-Path -LiteralPath $destination -PathType Leaf) { Test-FileAvailableForReplacement $destination }
+            [IO.File]::Move($backup, $destination)
+        }
+        catch {
+            Write-Warning "Could not restore the previous binary during rollback: $destination. The backup remains at $backup."
+        }
     }
     foreach ($originalPath in @($originalFiles.Keys)) {
         try { Restore-FileSnapshot -Path $originalPath -Snapshot $originalFiles[$originalPath] }
