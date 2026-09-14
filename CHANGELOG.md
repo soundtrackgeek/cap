@@ -21,6 +21,13 @@
 
 - Repeatable independent-process core capture probe using owned synthetic labs,
   kill checkpoints, concurrent writers and database integrity checks.
+
+### Fixed
+
+- `cap status` now retries missing receipt and explicit capture-ID binding
+  persistence after a confirmed journal commit, including body-free committed
+  pending records left by an earlier storage failure.
+
 ## 0.2.0-dev.19 - 2026-09-14
 
 ### Added

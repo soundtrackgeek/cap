@@ -516,6 +516,9 @@ fn receipt_and_binding_write_failures_never_turn_a_saved_entry_into_a_retry() {
         assert!(status.status.success());
         assert_eq!(json_output(&status)["data"]["saveState"], "committed");
         assert_eq!(fixture.row_count("entries").unwrap(), 3);
+        assert!(state.receipt_path(capture_id).is_file());
+        assert!(state.binding_path(capture_id).is_file());
+        assert!(!state.pending_path(capture_id).exists());
     }
 }
 
