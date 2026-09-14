@@ -48,7 +48,11 @@ fn run() -> i32 {
                     return if result.committed { 0 } else { 1 };
                 }
                 for warning in envelope.warnings {
-                    let _ = writeln!(io::stderr().lock(), "Warning: {warning}");
+                    let _ = writeln!(
+                        io::stderr().lock(),
+                        "Warning: {}",
+                        cap_effects::sanitize_text(&warning)
+                    );
                 }
             }
             0
@@ -59,7 +63,11 @@ fn run() -> i32 {
                 envelope.data = error.data;
                 let _ = output::write_json(&mut io::stdout().lock(), &envelope);
             } else {
-                let _ = writeln!(io::stderr().lock(), "{}", error.detail.message);
+                let _ = writeln!(
+                    io::stderr().lock(),
+                    "{}",
+                    cap_effects::sanitize_text(&error.detail.message)
+                );
             }
             error.exit_code
         }
@@ -88,8 +96,18 @@ fn print_parse_result(error: clap::Error, json: bool) -> i32 {
             )
         };
         let _ = output::write_json(&mut io::stdout().lock(), &envelope);
+    } else if help {
+        let _ = write!(
+            io::stdout().lock(),
+            "{}",
+            cap_effects::sanitize_text(&error.to_string())
+        );
     } else {
-        let _ = error.print();
+        let _ = write!(
+            io::stderr().lock(),
+            "{}",
+            cap_effects::sanitize_text(&error.to_string())
+        );
     }
     if help {
         0

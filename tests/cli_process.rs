@@ -33,6 +33,17 @@ fn dry_run_on_read_is_usage_error() {
     let value: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
     assert_eq!(value["error"]["code"], "INVALID_INPUT");
 }
+
+#[test]
+fn human_usage_errors_cannot_inject_terminal_controls() {
+    let output = command()
+        .arg("--unknown\u{1b}]52;c;AAAA\u{7}")
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(2));
+    assert!(!output.stderr.contains(&0x1b));
+    assert!(!output.stderr.contains(&0x07));
+}
 #[test]
 fn version_identifies_shared_capsule_revision() {
     let output = command().args(["--json", "--version"]).output().unwrap();

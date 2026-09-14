@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.0-dev.10] - 2026-09-14
+
+### Fixed
+
+- Sanitize terminal control sequences in human diagnostics and usage errors.
+
 ## [0.2.0-dev.9] - 2026-09-14
 
 ### Added
