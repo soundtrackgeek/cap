@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0-dev.9] - 2026-09-14
+
+### Added
+
+- Persistent synthetic lab generator for native interoperability and performance
+  checks, including isolated settings and optional 1k/10k/100k entry datasets.
+
 ## [0.2.0-dev.8] - 2026-09-14
 
 ### Added

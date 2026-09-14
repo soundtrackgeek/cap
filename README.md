@@ -45,3 +45,7 @@ cargo run -p cap-effects --example color_cli_demo
 It uses owned Unicode-safe layouts, source-backed palettes/gradients, bounded
 fade/shimmer frames, capability-aware ANSI/plain output, and terminal-state
 restoration. The example text is synthetic and is never saved.
+
+Native verification labs can be generated with `cargo run --example fixture_lab
+--locked -- 5`. These are new synthetic databases in the OS temp directory; see
+[native lab guidance](docs/evidence/native-lab.md) for the isolated launch contract.
