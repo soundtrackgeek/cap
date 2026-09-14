@@ -6,4 +6,5 @@ pub mod contracts;
 pub mod input;
 pub mod output;
 pub mod preferences;
+pub mod query;
 pub mod ui;

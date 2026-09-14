@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.2.0-dev.13] - 2026-09-14
+
+### Added
+
+- Added bounded read commands for exact entry lookup, today/recent lists,
+  structured search, tag/mood discovery, context settings, and safe doctor
+  diagnostics through the path-bound headless Capsule reader.
+- Read command tests cover hidden-entry protection, unchanged fixture rows,
+  metadata `items` output, FTS fallback diagnostics, and terminal sanitization.
+
 ## [0.2.0-dev.12] - 2026-09-14
 
 ### Added
