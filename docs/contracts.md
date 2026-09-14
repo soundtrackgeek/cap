@@ -33,6 +33,13 @@ set the same token. A confirmed commit remains successful on interruption;
 pre-commit interruption retains the recovery record. Never exit inside the signal
 callback or depend on Drop running after an unhandled process termination.
 
+Personality is connected. `GlobalOptions` is cloneable for per-invocation static
+fallbacks. Shared presentation lives in `preferences::resolve_from_store` and
+`resolve_defaults` (synthetic commands must use the latter). Full-motion FX uses
+`commands::fx::run_with_writer_and_cancel` with the root-owned stdout lock and
+cancellation token; a streamed result has empty human text to avoid duplicate
+printing. DTO-only helpers never wait through an animation in a memory buffer.
+
 ## Shared Capsule core
 
 WP01 owns `crates/capsule-core` in the Capsule repository. Expose the extracted

@@ -17,7 +17,7 @@ pub struct Cli {
     pub command: Option<Command>,
 }
 
-#[derive(Debug, Default, Args)]
+#[derive(Debug, Clone, Default, Args)]
 pub struct GlobalOptions {
     #[arg(long, global = true)]
     pub db: Option<PathBuf>,

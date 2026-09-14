@@ -54,9 +54,58 @@ pub fn execute(cli: &Cli) -> Result<CommandOutput, AppError> {
             2,
         ));
     }
-    Err(AppError::new(
-        "NOT_IMPLEMENTED",
-        "This command is not connected yet in the foundation development build.",
-        3,
-    ))
+    match &cli.command {
+        Some(Command::Theme { action }) => crate::commands::theme::run(action, &cli.global),
+        Some(Command::Config { action }) => crate::commands::config::run(action, &cli.global),
+        Some(Command::Completions { shell }) => {
+            crate::commands::completions::run(shell, &cli.global)
+        }
+        Some(Command::Fx { name }) => run_fx(name.as_deref(), &cli.global),
+        _ => Err(AppError::new(
+            "NOT_IMPLEMENTED",
+            "This command is not connected yet in the foundation development build.",
+            3,
+        )),
+    }
+}
+
+fn run_fx(
+    name: Option<&str>,
+    global: &crate::cli::GlobalOptions,
+) -> Result<CommandOutput, AppError> {
+    use cap_effects::{MotionMode, ResolvedOutputMode, TerminalCapabilities};
+    let capabilities = TerminalCapabilities::detect();
+    let presentation = crate::preferences::resolve_defaults(global, &capabilities)
+        .map_err(|error| AppError::new("INVALID_CONFIG", error.to_string(), 2))?;
+    if !matches!(
+        presentation.output,
+        ResolvedOutputMode::Human {
+            motion: MotionMode::Full,
+            ..
+        }
+    ) {
+        return crate::commands::fx::run_with_capabilities(name, global, &capabilities);
+    }
+    if let Err(error) = crate::cancellation::install() {
+        let mut static_options = global.clone();
+        static_options.motion = Some(crate::cli::MotionMode::Off);
+        let mut result =
+            crate::commands::fx::run_with_capabilities(name, &static_options, &capabilities)?;
+        result.warnings.push(format!(
+            "Animation disabled because interruption handling is unavailable: {error}"
+        ));
+        return Ok(result);
+    }
+    use std::io::Write;
+    let mut stdout = std::io::stdout().lock();
+    writeln!(stdout, "[synthetic] FX demo")
+        .and_then(|()| stdout.flush())
+        .map_err(|error| AppError::new("EFFECT_IO", error.to_string(), 1))?;
+    crate::commands::fx::run_with_writer_and_cancel(
+        name,
+        global,
+        &capabilities,
+        &mut stdout,
+        crate::cancellation::requested,
+    )
 }

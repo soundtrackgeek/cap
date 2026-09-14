@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.2.0-dev.12] - 2026-09-14
+
+### Added
+
+- Integrated theme, preferences, synthetic FX and PowerShell completion commands
+  with live guarded animation and process-level output/isolation verification.
+
+### Fixed
+
+- Keep terminal control sequences out of displayed editor preferences.
+
 ## [0.2.0-dev.11] - 2026-09-14
 
 ### Added
