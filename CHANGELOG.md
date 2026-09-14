@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.0-dev.27 - 2026-09-14
+
+### Fixed
+
+- Concurrent memory-state tests verify that every successful update survives,
+  while allowing the documented busy timeout under contention. A held-lock
+  regression verifies unchanged state and successful continuation after release.
+
+### Added
+
+- Complete CLI latency evidence for 20 fresh processes at each of 1k, 10k and
+  100k synthetic entries, including exact binary hash and optional warnings.
+
 ## 0.2.0-dev.26 - 2026-09-14
 
 ### Added

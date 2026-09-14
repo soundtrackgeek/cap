@@ -2,7 +2,7 @@
 //!
 //! This state is deliberately separate from Capsule's journal and
 //! gamification tables.  Every record is keyed by the canonical database
-//! identity, and updates are serialized through a small create-new lock plus
+//! identity, and updates are serialized through a persistent OS file lock plus
 //! an atomic same-directory replacement.  A failure to read/query/persist a
 //! glint is returned as a warning so it can never turn a confirmed capture
 //! into a failed save.
@@ -498,7 +498,7 @@ fn replace_file(temporary: &Path, destination: &Path) -> io::Result<()> {
 mod tests {
     use super::*;
     use capsule_core::stats::MemoryEntry;
-    use std::sync::Arc;
+    use std::sync::{Arc, Barrier};
     use std::thread;
     use tempfile::tempdir;
 
@@ -555,22 +555,66 @@ mod tests {
         let store = Arc::new(MemoryStateStore::at_dir(dir.path()));
         let identity = identity(&db);
         let candidates = Arc::new(vec![entry("one"), entry("two")]);
+        let barrier = Arc::new(Barrier::new(8));
         let mut handles = Vec::new();
         for seed in 0..8 {
             let store = Arc::clone(&store);
-            let identity = identity.clone();
+            let mut identity = identity.clone();
+            identity.canonical_path.push_str(&format!("-{seed}"));
             let candidates = Arc::clone(&candidates);
+            let barrier = Arc::clone(&barrier);
             handles.push(thread::spawn(move || {
-                store.choose_recall(&identity, &candidates, seed).unwrap();
+                barrier.wait();
+                let result = store.choose_recall(&identity, &candidates, seed);
+                (identity_key(&identity), result)
             }));
         }
+        let mut successful = Vec::new();
         for handle in handles {
-            handle.join().unwrap();
+            let (key, result) = handle.join().unwrap();
+            match result {
+                Ok(Some(entry)) => successful.push((key, entry.uuid.unwrap())),
+                // Recall state is optional and has a bounded lock wait. A
+                // contended runner may legitimately exhaust that budget.
+                Err(error) => assert!(error.starts_with("memory state is busy:"), "{error}"),
+                Ok(None) => panic!("non-empty recall candidates returned no entry"),
+            }
         }
+        assert!(
+            !successful.is_empty(),
+            "at least the first lock holder must finish"
+        );
         let state: MemoryState = serde_json::from_slice(&fs::read(store.path()).unwrap()).unwrap();
-        assert!(state
-            .last_recall_by_database
-            .contains_key(&identity_key(&identity)));
+        assert_eq!(state.last_recall_by_database.len(), successful.len());
+        for (key, uuid) in successful {
+            assert_eq!(state.last_recall_by_database.get(&key), Some(&uuid));
+        }
+    }
+
+    #[test]
+    fn busy_recall_preserves_state_and_resumes_after_lock_release() {
+        let dir = tempdir().unwrap();
+        let db = dir.path().join("capsule.db");
+        File::create(&db).unwrap();
+        let store = MemoryStateStore::at_dir(dir.path());
+        let identity = identity(&db);
+        let candidates = vec![entry("one"), entry("two")];
+        store.choose_recall(&identity, &candidates, 0).unwrap();
+        let before = fs::read(store.path()).unwrap();
+        let lock = acquire_lock(&store.lock_path(), None).unwrap();
+        let error = store.choose_recall(&identity, &candidates, 0).unwrap_err();
+        assert!(error.starts_with("memory state is busy:"), "{error}");
+        assert_eq!(fs::read(store.path()).unwrap(), before);
+        drop(lock);
+        assert_eq!(
+            store
+                .choose_recall(&identity, &candidates, 0)
+                .unwrap()
+                .unwrap()
+                .uuid
+                .as_deref(),
+            Some("two")
+        );
     }
 
     #[test]

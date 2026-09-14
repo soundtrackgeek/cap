@@ -72,7 +72,8 @@ Accepted evidence:
 - Expanded release core benchmark: 20 samples per size, p50/p95 of 89/112 ms
   (1k), 295/409 ms (10k), 2448/4969 ms (100k). Most measured time is verified
   backup work; [phase timings and limits](evidence/latency.md) distinguish the
-  core from the still-pending CLI capture benchmark.
+  core from the complete CLI capture benchmark (116/162 ms Saved-line p50/p95
+  at 1k, 392/452 ms at 10k, and 2,281/2,998 ms at 100k synthetic entries).
 - Root shared `WriterPreferences` snapshot at Capsule `a2e7829` passed two
   safe/default/Gauntlet tests, six desktop settings regressions and core Clippy.
   WP08 can consume it after the final shared-core pin is integrated.

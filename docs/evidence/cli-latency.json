@@ -1,0 +1,536 @@
+{
+  "capExecutable": "\\\\?\\C:\\_code\\cap\\target\\release\\cap.exe",
+  "capVersion": {
+    "command": "version",
+    "data": {
+      "text": "cap 0.2.0-dev.26 (Capsule core 4888a2a33ab6; desktop baseline 0.37.0)\n"
+    },
+    "error": null,
+    "ok": true,
+    "schemaVersion": 1,
+    "warnings": []
+  },
+  "executableSha256": "67c0da878637baa0bfaf1c9a5ec2ff6b0304876178a574c559865f7793bcbeef",
+  "measurement": "Fresh process per sample; first line is transport arrival, not an inferred SQLite commit time. Filesystem cache is not forcibly cold. No context or decoration.",
+  "reports": [
+    {
+      "databaseBytesBefore": 548864,
+      "entriesBefore": 1000,
+      "firstLineMs": {
+        "max": 196.06,
+        "min": 103.1927,
+        "p50": 116.4675,
+        "p95": 162.2767
+      },
+      "lab": "\\\\?\\C:\\Users\\jtill\\AppData\\Local\\Temp\\cap lab 36336-1789416575868094600",
+      "samples": [
+        {
+          "firstLineMs": 103.1927,
+          "sample": 0,
+          "totalMs": 119.36869999999999,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 154.39159999999998,
+          "sample": 1,
+          "totalMs": 182.4095,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 196.06,
+          "sample": 2,
+          "totalMs": 224.149,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 162.2767,
+          "sample": 3,
+          "totalMs": 181.9165,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 152.41830000000002,
+          "sample": 4,
+          "totalMs": 200.0041,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 144.15910000000002,
+          "sample": 5,
+          "totalMs": 162.8699,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 122.52680000000001,
+          "sample": 6,
+          "totalMs": 141.4957,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 114.7176,
+          "sample": 7,
+          "totalMs": 131.139,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 114.985,
+          "sample": 8,
+          "totalMs": 132.0355,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 116.2654,
+          "sample": 9,
+          "totalMs": 134.1392,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 116.17479999999999,
+          "sample": 10,
+          "totalMs": 131.07559999999998,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 141.8817,
+          "sample": 11,
+          "totalMs": 156.26870000000002,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 110.50649999999999,
+          "sample": 12,
+          "totalMs": 128.9285,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 113.78399999999999,
+          "sample": 13,
+          "totalMs": 129.8518,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 116.4675,
+          "sample": 14,
+          "totalMs": 134.6998,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 106.4636,
+          "sample": 15,
+          "totalMs": 123.96419999999999,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 123.1939,
+          "sample": 16,
+          "totalMs": 139.2918,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 111.6532,
+          "sample": 17,
+          "totalMs": 126.4008,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 123.7513,
+          "sample": 18,
+          "totalMs": 140.185,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 132.3055,
+          "sample": 19,
+          "totalMs": 161.2343,
+          "warningCount": 0,
+          "warnings": []
+        }
+      ],
+      "totalMs": {
+        "max": 224.149,
+        "min": 119.36869999999999,
+        "p50": 134.6998,
+        "p95": 200.0041
+      }
+    },
+    {
+      "databaseBytesBefore": 3997696,
+      "entriesBefore": 10000,
+      "firstLineMs": {
+        "max": 482.3141,
+        "min": 326.0306,
+        "p50": 392.237,
+        "p95": 451.5417
+      },
+      "lab": "\\\\?\\C:\\Users\\jtill\\AppData\\Local\\Temp\\cap lab 58668-1789416579362718400",
+      "samples": [
+        {
+          "firstLineMs": 446.0229,
+          "sample": 0,
+          "totalMs": 484.5881,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 426.2249,
+          "sample": 1,
+          "totalMs": 499.5499,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 435.969,
+          "sample": 2,
+          "totalMs": 474.4186,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 434.8189,
+          "sample": 3,
+          "totalMs": 487.71500000000003,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 482.3141,
+          "sample": 4,
+          "totalMs": 533.846,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 379.5419,
+          "sample": 5,
+          "totalMs": 436.88329999999996,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 432.88759999999996,
+          "sample": 6,
+          "totalMs": 475.2047,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 392.237,
+          "sample": 7,
+          "totalMs": 454.0132,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 389.17859999999996,
+          "sample": 8,
+          "totalMs": 442.96410000000003,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 400.1014,
+          "sample": 9,
+          "totalMs": 464.3798,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 451.5417,
+          "sample": 10,
+          "totalMs": 506.2453,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 363.3341,
+          "sample": 11,
+          "totalMs": 435.5039,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 394.57419999999996,
+          "sample": 12,
+          "totalMs": 443.9226,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 416.4787,
+          "sample": 13,
+          "totalMs": 454.8832,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 360.388,
+          "sample": 14,
+          "totalMs": 392.8194,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 365.31629999999996,
+          "sample": 15,
+          "totalMs": 411.3186,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 350.2672,
+          "sample": 16,
+          "totalMs": 384.0736,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 339.111,
+          "sample": 17,
+          "totalMs": 381.818,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 336.9842,
+          "sample": 18,
+          "totalMs": 374.5494,
+          "warningCount": 0,
+          "warnings": []
+        },
+        {
+          "firstLineMs": 326.0306,
+          "sample": 19,
+          "totalMs": 432.55379999999997,
+          "warningCount": 0,
+          "warnings": []
+        }
+      ],
+      "totalMs": {
+        "max": 533.846,
+        "min": 374.5494,
+        "p50": 443.9226,
+        "p95": 506.2453
+      }
+    },
+    {
+      "databaseBytesBefore": 39366656,
+      "entriesBefore": 100000,
+      "firstLineMs": {
+        "max": 3045.7683,
+        "min": 2118.3291999999997,
+        "p50": 2281.1526,
+        "p95": 2997.7561
+      },
+      "lab": "\\\\?\\C:\\Users\\jtill\\AppData\\Local\\Temp\\cap lab 5500-1789416589179925500",
+      "samples": [
+        {
+          "firstLineMs": 2193.9314,
+          "sample": 0,
+          "totalMs": 2304.5922,
+          "warningCount": 1,
+          "warnings": [
+            "Warning: Milestones unavailable: metric query exceeded its deadline"
+          ]
+        },
+        {
+          "firstLineMs": 2176.2417,
+          "sample": 1,
+          "totalMs": 2287.6254,
+          "warningCount": 1,
+          "warnings": [
+            "Warning: Milestones unavailable: metric query exceeded its deadline"
+          ]
+        },
+        {
+          "firstLineMs": 2281.1526,
+          "sample": 2,
+          "totalMs": 2391.1919,
+          "warningCount": 1,
+          "warnings": [
+            "Warning: Milestones unavailable: metric query exceeded its deadline"
+          ]
+        },
+        {
+          "firstLineMs": 2175.2903,
+          "sample": 3,
+          "totalMs": 2287.007,
+          "warningCount": 1,
+          "warnings": [
+            "Warning: Milestones unavailable: metric query exceeded its deadline"
+          ]
+        },
+        {
+          "firstLineMs": 2155.5119999999997,
+          "sample": 4,
+          "totalMs": 2267.2461,
+          "warningCount": 1,
+          "warnings": [
+            "Warning: Milestones unavailable: metric query exceeded its deadline"
+          ]
+        },
+        {
+          "firstLineMs": 2118.3291999999997,
+          "sample": 5,
+          "totalMs": 2225.5071000000003,
+          "warningCount": 1,
+          "warnings": [
+            "Warning: Milestones unavailable: metric query exceeded its deadline"
+          ]
+        },
+        {
+          "firstLineMs": 2214.5953999999997,
+          "sample": 6,
+          "totalMs": 2324.1787999999997,
+          "warningCount": 1,
+          "warnings": [
+            "Warning: Milestones unavailable: metric query exceeded its deadline"
+          ]
+        },
+        {
+          "firstLineMs": 2777.3469,
+          "sample": 7,
+          "totalMs": 2901.2177,
+          "warningCount": 1,
+          "warnings": [
+            "Warning: Milestones unavailable: interrupted"
+          ]
+        },
+        {
+          "firstLineMs": 3045.7683,
+          "sample": 8,
+          "totalMs": 3160.3649,
+          "warningCount": 1,
+          "warnings": [
+            "Warning: Milestones unavailable: interrupted"
+          ]
+        },
+        {
+          "firstLineMs": 2627.1711,
+          "sample": 9,
+          "totalMs": 2737.4191,
+          "warningCount": 1,
+          "warnings": [
+            "Warning: Milestones unavailable: metric query exceeded its deadline"
+          ]
+        },
+        {
+          "firstLineMs": 2347.2074,
+          "sample": 10,
+          "totalMs": 2458.2257,
+          "warningCount": 1,
+          "warnings": [
+            "Warning: Milestones unavailable: metric query exceeded its deadline"
+          ]
+        },
+        {
+          "firstLineMs": 2366.3157,
+          "sample": 11,
+          "totalMs": 2477.6182000000003,
+          "warningCount": 1,
+          "warnings": [
+            "Warning: Milestones unavailable: metric query exceeded its deadline"
+          ]
+        },
+        {
+          "firstLineMs": 2178.487,
+          "sample": 12,
+          "totalMs": 2287.7831,
+          "warningCount": 1,
+          "warnings": [
+            "Warning: Milestones unavailable: metric query exceeded its deadline"
+          ]
+        },
+        {
+          "firstLineMs": 2205.9491,
+          "sample": 13,
+          "totalMs": 2315.1284,
+          "warningCount": 1,
+          "warnings": [
+            "Warning: Milestones unavailable: metric query exceeded its deadline"
+          ]
+        },
+        {
+          "firstLineMs": 2258.011,
+          "sample": 14,
+          "totalMs": 2379.2669,
+          "warningCount": 1,
+          "warnings": [
+            "Warning: Milestones unavailable: metric query exceeded its deadline"
+          ]
+        },
+        {
+          "firstLineMs": 2997.7561,
+          "sample": 15,
+          "totalMs": 3109.7477,
+          "warningCount": 1,
+          "warnings": [
+            "Warning: Milestones unavailable: interrupted"
+          ]
+        },
+        {
+          "firstLineMs": 2682.5562,
+          "sample": 16,
+          "totalMs": 2814.1731,
+          "warningCount": 1,
+          "warnings": [
+            "Warning: Milestones unavailable: metric query exceeded its deadline"
+          ]
+        },
+        {
+          "firstLineMs": 2333.3067,
+          "sample": 17,
+          "totalMs": 2460.3114,
+          "warningCount": 1,
+          "warnings": [
+            "Warning: Milestones unavailable: metric query exceeded its deadline"
+          ]
+        },
+        {
+          "firstLineMs": 2339.9079,
+          "sample": 18,
+          "totalMs": 2471.5254999999997,
+          "warningCount": 1,
+          "warnings": [
+            "Warning: Milestones unavailable: metric query exceeded its deadline"
+          ]
+        },
+        {
+          "firstLineMs": 2531.7135,
+          "sample": 19,
+          "totalMs": 2663.64,
+          "warningCount": 1,
+          "warnings": [
+            "Warning: Milestones unavailable: metric query exceeded its deadline"
+          ]
+        }
+      ],
+      "totalMs": {
+        "max": 3160.3649,
+        "min": 2225.5071000000003,
+        "p50": 2391.1919,
+        "p95": 3109.7477
+      }
+    }
+  ],
+  "schemaVersion": 1,
+  "synthetic": true
+}

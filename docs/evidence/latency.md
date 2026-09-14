@@ -26,8 +26,37 @@ all retained backups. Retention is five snapshots.
 Verified backup dominates this run, especially at 100k entries. It must remain
 enabled. A long save needs visible working feedback before its confirmed Saved
 line. This core-only probe does not include CLI pending/receipt files, provider
-context, milestone queries or terminal effects. The complete CLI benchmark still
-needs to run after capture integration.
+context, milestone queries or terminal effects. The CLI measurements below
+include the first two local-state operations.
+
+## Complete CLI capture
+
+Normal release `cap 0.2.0-dev.26`, source
+`f7ba64d019434ee8a9f99093ead3ef86b9dbcf7a`, shared core
+`4888a2a33ab65a1833cdf5e6cbdad38baa3d4030`. Executable SHA-256:
+`67c0da878637baa0bfaf1c9a5ec2ff6b0304876178a574c559865f7793bcbeef`.
+Full raw samples and per-command warnings: [cli-latency.json](cli-latency.json).
+
+Each sample launches a new process with `--plain --no-context add`, isolated
+environment and newly generated synthetic journal. Pending drafts, verified
+backups, commit receipts and optional milestone checks are included. Provider
+requests and terminal effects are excluded. Exact final counts and each unique
+saved body are verified; no user journal is used.
+
+| Initial entries | Initial DB bytes | Saved line p50 / p95 | Process exit p50 / p95 |
+| --- | --- | --- | --- |
+| 1,000 | 548,864 | 116 / 162 ms | 135 / 200 ms |
+| 10,000 | 3,997,696 | 392 / 452 ms | 444 / 506 ms |
+| 100,000 | 39,366,656 | 2,281 / 2,998 ms | 2,391 / 3,110 ms |
+
+There are 20 samples per size. Saved-line timing measures transport arrival,
+not the precise SQLite commit instant. All saves succeed. The smaller fixtures
+produce no warnings. All 100k samples report an optional milestone query timeout
+(`interrupted` or `metric query exceeded its deadline`): almost all generated
+entries fall on the same date, so the weekly query reaches its 100ms deadline.
+The capture stays saved; the optional glint is omitted. Neither the lock nor
+query timeout was lengthened to make this measurement appear faster or cleaner.
+This is a reproducible development baseline, not a controlled cold-cache claim.
 
 ## Help startup
 
