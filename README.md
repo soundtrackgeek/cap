@@ -76,6 +76,11 @@ target\release\examples\fixture_lab.exe`. It creates fresh synthetic journals,
 checks each saved row, and reports first-output and total p50/p95 latency as JSON.
 It does not accept an existing journal path or claim to measure a cold disk cache.
 
+For the core alone, `cargo run --release --locked --example core_process_probe
+-- --bench` measures 20 fresh processes per synthetic journal size, with separate
+checkpoint timings. See [measured latency](docs/evidence/latency.md) for the
+results and measurement limits.
+
 Personality controls are local to cap and never write Capsule's configuration:
 
 ```powershell

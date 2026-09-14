@@ -69,6 +69,13 @@ Accepted evidence:
 - Preliminary shared-core measurements on new synthetic journals (three debug
   process samples, filesystem cache uncontrolled): 1k entries 98–111 ms; 10k
   311–313 ms; 100k 2536–2651 ms. These are not final CLI p50/p95 measurements.
+- Expanded release core benchmark: 20 samples per size, p50/p95 of 89/112 ms
+  (1k), 295/409 ms (10k), 2448/4969 ms (100k). Most measured time is verified
+  backup work; [phase timings and limits](evidence/latency.md) distinguish the
+  core from the still-pending CLI capture benchmark.
+- Root shared `WriterPreferences` snapshot at Capsule `a2e7829` passed two
+  safe/default/Gauntlet tests, six desktop settings regressions and core Clippy.
+  WP08 can consume it after the final shared-core pin is integrated.
 - WP06: read-only core/search adapters passed 91 core and 74 desktop tests
   (one live smoke ignored). Root pinned `0066097`, connected all eight read
   commands, and passed the full cap workspace plus four process checks (two

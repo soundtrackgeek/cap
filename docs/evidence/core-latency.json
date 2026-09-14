@@ -1,0 +1,913 @@
+{
+  "coreRevision": "8881d301cf15f0bb175f69acd0f0be8c6ba5fba8",
+  "measurement": "Separate process per sample, shared-core capture only, filesystem cache not controlled. Phase boundaries are injected core checkpoints; backup includes coordination/verification, finalization includes commit and guard/receipt work. No CLI pending/context/rendering work.",
+  "samples": [
+    {
+      "databaseBytes": 569344,
+      "entries": 1000,
+      "phasesMs": {
+        "backupAndCoordinationMs": {
+          "max": 94.8758,
+          "min": 51.9175,
+          "p50": 55.985600000000005,
+          "p95": 71.8185
+        },
+        "beginAndAllocationMs": {
+          "max": 0.06400000000000716,
+          "min": 0.03440000000000509,
+          "p50": 0.04010000000000957,
+          "p95": 0.05939999999999657
+        },
+        "captureMs": {
+          "max": 141.0,
+          "min": 79.0,
+          "p50": 89.0,
+          "p95": 112.0
+        },
+        "commitAndGuardFinalizationMs": {
+          "max": 22.282099999999986,
+          "min": 9.003199999999993,
+          "p50": 12.789000000000016,
+          "p95": 16.574000000000012
+        },
+        "entryAndRelationsMs": {
+          "max": 1.8293000000000035,
+          "min": 0.9050000000000011,
+          "p50": 1.0972000000000008,
+          "p95": 1.5732
+        },
+        "legacyRepairAndReconcileMs": {
+          "max": 18.389300000000006,
+          "min": 13.709200000000003,
+          "p50": 16.000999999999998,
+          "p95": 18.361800000000002
+        },
+        "processMs": {
+          "max": 172.4425,
+          "min": 98.2584,
+          "p50": 110.14540000000001,
+          "p95": 166.0441
+        },
+        "resequenceMs": {
+          "max": 9.527200000000008,
+          "min": 0.6735999999999933,
+          "p50": 1.0879999999999939,
+          "p95": 6.655999999999992
+        },
+        "resolveBeforeBackupMs": {
+          "max": 3.2342,
+          "min": 1.4074,
+          "p50": 1.6853,
+          "p95": 2.9114
+        }
+      },
+      "samples": [
+        {
+          "backupAndCoordinationMs": 53.0372,
+          "beginAndAllocationMs": 0.035699999999991405,
+          "captureMs": 79,
+          "commitAndGuardFinalizationMs": 9.003199999999993,
+          "entryAndRelationsMs": 0.933099999999996,
+          "legacyRepairAndReconcileMs": 13.709200000000003,
+          "processMs": 100.67760000000001,
+          "resequenceMs": 0.7376000000000147,
+          "resolveBeforeBackupMs": 1.5508,
+          "sample": 0
+        },
+        {
+          "backupAndCoordinationMs": 54.8894,
+          "beginAndAllocationMs": 0.037800000000004275,
+          "captureMs": 83,
+          "commitAndGuardFinalizationMs": 9.617000000000004,
+          "entryAndRelationsMs": 0.9883000000000095,
+          "legacyRepairAndReconcileMs": 16.000999999999998,
+          "processMs": 98.2584,
+          "resequenceMs": 0.7172999999999803,
+          "resolveBeforeBackupMs": 1.6827,
+          "sample": 1
+        },
+        {
+          "backupAndCoordinationMs": 53.1462,
+          "beginAndAllocationMs": 0.03440000000000509,
+          "captureMs": 83,
+          "commitAndGuardFinalizationMs": 10.439000000000007,
+          "entryAndRelationsMs": 0.9050000000000011,
+          "legacyRepairAndReconcileMs": 15.724499999999999,
+          "processMs": 99.3327,
+          "resequenceMs": 0.6735999999999933,
+          "resolveBeforeBackupMs": 2.3485,
+          "sample": 2
+        },
+        {
+          "backupAndCoordinationMs": 53.521,
+          "beginAndAllocationMs": 0.041400000000010095,
+          "captureMs": 82,
+          "commitAndGuardFinalizationMs": 9.832999999999984,
+          "entryAndRelationsMs": 1.0972000000000008,
+          "legacyRepairAndReconcileMs": 15.648799999999994,
+          "processMs": 102.4527,
+          "resequenceMs": 0.9633000000000038,
+          "resolveBeforeBackupMs": 1.5312,
+          "sample": 3
+        },
+        {
+          "backupAndCoordinationMs": 56.664300000000004,
+          "beginAndAllocationMs": 0.05100000000000193,
+          "captureMs": 87,
+          "commitAndGuardFinalizationMs": 12.471699999999998,
+          "entryAndRelationsMs": 1.1677000000000106,
+          "legacyRepairAndReconcileMs": 14.939899999999994,
+          "processMs": 110.1627,
+          "resequenceMs": 1.0879999999999939,
+          "resolveBeforeBackupMs": 1.6012000000000002,
+          "sample": 4
+        },
+        {
+          "backupAndCoordinationMs": 55.985600000000005,
+          "beginAndAllocationMs": 0.05740000000000123,
+          "captureMs": 89,
+          "commitAndGuardFinalizationMs": 13.275999999999996,
+          "entryAndRelationsMs": 1.1324999999999932,
+          "legacyRepairAndReconcileMs": 16.516,
+          "processMs": 109.7879,
+          "resequenceMs": 0.795100000000005,
+          "resolveBeforeBackupMs": 1.4205,
+          "sample": 5
+        },
+        {
+          "backupAndCoordinationMs": 54.7795,
+          "beginAndAllocationMs": 0.03540000000000987,
+          "captureMs": 85,
+          "commitAndGuardFinalizationMs": 12.276700000000005,
+          "entryAndRelationsMs": 0.999299999999991,
+          "legacyRepairAndReconcileMs": 14.576,
+          "processMs": 100.125,
+          "resequenceMs": 0.8597000000000037,
+          "resolveBeforeBackupMs": 1.757,
+          "sample": 6
+        },
+        {
+          "backupAndCoordinationMs": 51.9175,
+          "beginAndAllocationMs": 0.04010000000000957,
+          "captureMs": 80,
+          "commitAndGuardFinalizationMs": 9.096599999999995,
+          "entryAndRelationsMs": 1.1258999999999872,
+          "legacyRepairAndReconcileMs": 16.5287,
+          "processMs": 99.2337,
+          "resequenceMs": 0.8078000000000003,
+          "resolveBeforeBackupMs": 1.4074,
+          "sample": 7
+        },
+        {
+          "backupAndCoordinationMs": 56.0139,
+          "beginAndAllocationMs": 0.03839999999999577,
+          "captureMs": 84,
+          "commitAndGuardFinalizationMs": 9.308599999999998,
+          "entryAndRelationsMs": 0.9300999999999959,
+          "legacyRepairAndReconcileMs": 15.409300000000009,
+          "processMs": 99.1065,
+          "resequenceMs": 0.8470000000000084,
+          "resolveBeforeBackupMs": 1.6853,
+          "sample": 8
+        },
+        {
+          "backupAndCoordinationMs": 53.0904,
+          "beginAndAllocationMs": 0.05540000000000589,
+          "captureMs": 88,
+          "commitAndGuardFinalizationMs": 13.973399999999998,
+          "entryAndRelationsMs": 1.2507999999999981,
+          "legacyRepairAndReconcileMs": 17.2917,
+          "processMs": 110.2079,
+          "resequenceMs": 1.0596999999999923,
+          "resolveBeforeBackupMs": 2.0383,
+          "sample": 9
+        },
+        {
+          "backupAndCoordinationMs": 57.396,
+          "beginAndAllocationMs": 0.03489999999999327,
+          "captureMs": 90,
+          "commitAndGuardFinalizationMs": 11.941500000000005,
+          "entryAndRelationsMs": 1.0083000000000055,
+          "legacyRepairAndReconcileMs": 15.191100000000006,
+          "processMs": 110.2585,
+          "resequenceMs": 3.396499999999989,
+          "resolveBeforeBackupMs": 1.4687,
+          "sample": 10
+        },
+        {
+          "backupAndCoordinationMs": 60.7591,
+          "beginAndAllocationMs": 0.03499999999999659,
+          "captureMs": 98,
+          "commitAndGuardFinalizationMs": 13.424599999999998,
+          "entryAndRelationsMs": 0.9462000000000046,
+          "legacyRepairAndReconcileMs": 16.2532,
+          "processMs": 118.768,
+          "resequenceMs": 4.6998999999999995,
+          "resolveBeforeBackupMs": 2.2167,
+          "sample": 11
+        },
+        {
+          "backupAndCoordinationMs": 55.137100000000004,
+          "beginAndAllocationMs": 0.04999999999999716,
+          "captureMs": 92,
+          "commitAndGuardFinalizationMs": 12.789000000000016,
+          "entryAndRelationsMs": 1.8293000000000035,
+          "legacyRepairAndReconcileMs": 14.57569999999999,
+          "processMs": 108.9988,
+          "resequenceMs": 6.655999999999992,
+          "resolveBeforeBackupMs": 1.7734,
+          "sample": 12
+        },
+        {
+          "backupAndCoordinationMs": 53.380599999999994,
+          "beginAndAllocationMs": 0.036100000000004684,
+          "captureMs": 91,
+          "commitAndGuardFinalizationMs": 13.115300000000005,
+          "entryAndRelationsMs": 0.968599999999995,
+          "legacyRepairAndReconcileMs": 17.583399999999997,
+          "processMs": 110.14540000000001,
+          "resequenceMs": 5.231099999999998,
+          "resolveBeforeBackupMs": 1.6586999999999998,
+          "sample": 13
+        },
+        {
+          "backupAndCoordinationMs": 94.8758,
+          "beginAndAllocationMs": 0.04800000000000182,
+          "captureMs": 141,
+          "commitAndGuardFinalizationMs": 16.574000000000012,
+          "entryAndRelationsMs": 1.3329999999999984,
+          "legacyRepairAndReconcileMs": 18.361800000000002,
+          "processMs": 172.4425,
+          "resequenceMs": 6.6129999999999995,
+          "resolveBeforeBackupMs": 3.2342,
+          "sample": 14
+        },
+        {
+          "backupAndCoordinationMs": 67.1408,
+          "beginAndAllocationMs": 0.05920000000000414,
+          "captureMs": 112,
+          "commitAndGuardFinalizationMs": 14.620000000000005,
+          "entryAndRelationsMs": 1.3554999999999922,
+          "legacyRepairAndReconcileMs": 17.9867,
+          "processMs": 166.0441,
+          "resequenceMs": 9.527200000000008,
+          "resolveBeforeBackupMs": 1.9713,
+          "sample": 15
+        },
+        {
+          "backupAndCoordinationMs": 61.79840000000001,
+          "beginAndAllocationMs": 0.06400000000000716,
+          "captureMs": 103,
+          "commitAndGuardFinalizationMs": 13.458699999999993,
+          "entryAndRelationsMs": 1.5732,
+          "legacyRepairAndReconcileMs": 18.151799999999994,
+          "processMs": 133.87089999999998,
+          "resequenceMs": 6.150099999999995,
+          "resolveBeforeBackupMs": 2.4221999999999997,
+          "sample": 16
+        },
+        {
+          "backupAndCoordinationMs": 64.78699999999999,
+          "beginAndAllocationMs": 0.05939999999999657,
+          "captureMs": 105,
+          "commitAndGuardFinalizationMs": 13.679599999999994,
+          "entryAndRelationsMs": 1.2938000000000045,
+          "legacyRepairAndReconcileMs": 17.5141,
+          "processMs": 122.75179999999999,
+          "resequenceMs": 6.151600000000002,
+          "resolveBeforeBackupMs": 1.6012000000000002,
+          "sample": 17
+        },
+        {
+          "backupAndCoordinationMs": 61.863400000000006,
+          "beginAndAllocationMs": 0.054199999999994475,
+          "captureMs": 109,
+          "commitAndGuardFinalizationMs": 22.282099999999986,
+          "entryAndRelationsMs": 1.2509000000000015,
+          "legacyRepairAndReconcileMs": 15.3737,
+          "processMs": 134.81199999999998,
+          "resequenceMs": 6.206700000000012,
+          "resolveBeforeBackupMs": 2.1414,
+          "sample": 18
+        },
+        {
+          "backupAndCoordinationMs": 71.8185,
+          "beginAndAllocationMs": 0.035899999999998045,
+          "captureMs": 111,
+          "commitAndGuardFinalizationMs": 12.871500000000012,
+          "entryAndRelationsMs": 1.0429999999999922,
+          "legacyRepairAndReconcileMs": 18.389300000000006,
+          "processMs": 136.76340000000002,
+          "resequenceMs": 4.492199999999997,
+          "resolveBeforeBackupMs": 2.9114,
+          "sample": 19
+        }
+      ]
+    },
+    {
+      "databaseBytes": 4190208,
+      "entries": 10000,
+      "phasesMs": {
+        "backupAndCoordinationMs": {
+          "max": 284.61879999999996,
+          "min": 206.89860000000002,
+          "p50": 230.8327,
+          "p95": 283.09860000000003
+        },
+        "beginAndAllocationMs": {
+          "max": 0.0805000000000291,
+          "min": 0.033299999999940155,
+          "p50": 0.044399999999996,
+          "p95": 0.06199999999989814
+        },
+        "captureMs": {
+          "max": 420.0,
+          "min": 248.0,
+          "p50": 295.0,
+          "p95": 409.0
+        },
+        "commitAndGuardFinalizationMs": {
+          "max": 51.69400000000002,
+          "min": 9.439599999999984,
+          "p50": 17.523900000000026,
+          "p95": 50.14179999999999
+        },
+        "entryAndRelationsMs": {
+          "max": 4.023799999999937,
+          "min": 1.5524999999999807,
+          "p50": 1.806499999999943,
+          "p95": 2.737799999999936
+        },
+        "legacyRepairAndReconcileMs": {
+          "max": 26.58619999999999,
+          "min": 19.963900000000024,
+          "p50": 22.291300000000007,
+          "p95": 26.226499999999987
+        },
+        "processMs": {
+          "max": 447.0867,
+          "min": 272.91900000000004,
+          "p50": 316.7006,
+          "p95": 432.1503
+        },
+        "resequenceMs": {
+          "max": 58.10900000000004,
+          "min": 7.30000000000004,
+          "p50": 16.888000000000034,
+          "p95": 53.722099999999955
+        },
+        "resolveBeforeBackupMs": {
+          "max": 2.1053,
+          "min": 1.3062,
+          "p50": 1.6067,
+          "p95": 2.0501
+        }
+      },
+      "samples": [
+        {
+          "backupAndCoordinationMs": 230.2863,
+          "beginAndAllocationMs": 0.0805000000000291,
+          "captureMs": 295,
+          "commitAndGuardFinalizationMs": 17.523900000000026,
+          "entryAndRelationsMs": 2.737799999999936,
+          "legacyRepairAndReconcileMs": 26.58619999999999,
+          "processMs": 316.7006,
+          "resequenceMs": 16.888000000000034,
+          "resolveBeforeBackupMs": 1.4296,
+          "sample": 0
+        },
+        {
+          "backupAndCoordinationMs": 234.3588,
+          "beginAndAllocationMs": 0.033299999999940155,
+          "captureMs": 278,
+          "commitAndGuardFinalizationMs": 11.566299999999956,
+          "entryAndRelationsMs": 1.5551000000000386,
+          "legacyRepairAndReconcileMs": 21.099900000000048,
+          "processMs": 302.0091,
+          "resequenceMs": 8.146500000000003,
+          "resolveBeforeBackupMs": 1.4127,
+          "sample": 1
+        },
+        {
+          "backupAndCoordinationMs": 206.89860000000002,
+          "beginAndAllocationMs": 0.03860000000000241,
+          "captureMs": 248,
+          "commitAndGuardFinalizationMs": 10.841299999999961,
+          "entryAndRelationsMs": 1.5524999999999807,
+          "legacyRepairAndReconcileMs": 20.369,
+          "processMs": 272.91900000000004,
+          "resequenceMs": 7.30000000000004,
+          "resolveBeforeBackupMs": 1.5313,
+          "sample": 2
+        },
+        {
+          "backupAndCoordinationMs": 230.8327,
+          "beginAndAllocationMs": 0.04230000000001155,
+          "captureMs": 281,
+          "commitAndGuardFinalizationMs": 12.499799999999993,
+          "entryAndRelationsMs": 2.2124999999999773,
+          "legacyRepairAndReconcileMs": 26.004699999999985,
+          "processMs": 303.25010000000003,
+          "resequenceMs": 8.226300000000037,
+          "resolveBeforeBackupMs": 1.6269,
+          "sample": 3
+        },
+        {
+          "backupAndCoordinationMs": 237.2955,
+          "beginAndAllocationMs": 0.04529999999999745,
+          "captureMs": 285,
+          "commitAndGuardFinalizationMs": 10.599299999999971,
+          "entryAndRelationsMs": 2.2116999999999507,
+          "legacyRepairAndReconcileMs": 23.97720000000001,
+          "processMs": 304.513,
+          "resequenceMs": 9.49130000000008,
+          "resolveBeforeBackupMs": 1.4999,
+          "sample": 4
+        },
+        {
+          "backupAndCoordinationMs": 230.0435,
+          "beginAndAllocationMs": 0.039900000000017144,
+          "captureMs": 281,
+          "commitAndGuardFinalizationMs": 17.049499999999966,
+          "entryAndRelationsMs": 1.6989000000000374,
+          "legacyRepairAndReconcileMs": 22.44799999999998,
+          "processMs": 303.9054,
+          "resequenceMs": 9.149499999999989,
+          "resolveBeforeBackupMs": 1.4537,
+          "sample": 5
+        },
+        {
+          "backupAndCoordinationMs": 229.3789,
+          "beginAndAllocationMs": 0.03510000000002833,
+          "captureMs": 273,
+          "commitAndGuardFinalizationMs": 9.439599999999984,
+          "entryAndRelationsMs": 1.5768999999999664,
+          "legacyRepairAndReconcileMs": 22.291300000000007,
+          "processMs": 295.1671,
+          "resequenceMs": 8.846199999999982,
+          "resolveBeforeBackupMs": 1.7607,
+          "sample": 6
+        },
+        {
+          "backupAndCoordinationMs": 228.3719,
+          "beginAndAllocationMs": 0.04220000000000823,
+          "captureMs": 272,
+          "commitAndGuardFinalizationMs": 11.06329999999997,
+          "entryAndRelationsMs": 1.983000000000004,
+          "legacyRepairAndReconcileMs": 21.739199999999983,
+          "processMs": 291.1247,
+          "resequenceMs": 7.58880000000002,
+          "resolveBeforeBackupMs": 1.3545,
+          "sample": 7
+        },
+        {
+          "backupAndCoordinationMs": 230.3837,
+          "beginAndAllocationMs": 0.03930000000005407,
+          "captureMs": 274,
+          "commitAndGuardFinalizationMs": 9.969599999999957,
+          "entryAndRelationsMs": 1.806499999999943,
+          "legacyRepairAndReconcileMs": 22.37209999999999,
+          "processMs": 293.157,
+          "resequenceMs": 8.451200000000028,
+          "resolveBeforeBackupMs": 1.5918,
+          "sample": 8
+        },
+        {
+          "backupAndCoordinationMs": 227.81130000000002,
+          "beginAndAllocationMs": 0.04590000000001737,
+          "captureMs": 271,
+          "commitAndGuardFinalizationMs": 11.90930000000003,
+          "entryAndRelationsMs": 1.7697000000000003,
+          "legacyRepairAndReconcileMs": 20.64239999999998,
+          "processMs": 291.5571,
+          "resequenceMs": 7.912399999999963,
+          "resolveBeforeBackupMs": 1.6067,
+          "sample": 9
+        },
+        {
+          "backupAndCoordinationMs": 228.55200000000002,
+          "beginAndAllocationMs": 0.04539999999997235,
+          "captureMs": 340,
+          "commitAndGuardFinalizationMs": 27.876399999999933,
+          "entryAndRelationsMs": 1.8329000000000235,
+          "legacyRepairAndReconcileMs": 21.681700000000006,
+          "processMs": 356.9046,
+          "resequenceMs": 58.10900000000004,
+          "resolveBeforeBackupMs": 2.0501,
+          "sample": 10
+        },
+        {
+          "backupAndCoordinationMs": 228.74859999999998,
+          "beginAndAllocationMs": 0.045400000000029195,
+          "captureMs": 325,
+          "commitAndGuardFinalizationMs": 36.59499999999997,
+          "entryAndRelationsMs": 1.8362999999999943,
+          "legacyRepairAndReconcileMs": 20.305699999999973,
+          "processMs": 342.5482,
+          "resequenceMs": 36.17270000000005,
+          "resolveBeforeBackupMs": 1.609,
+          "sample": 11
+        },
+        {
+          "backupAndCoordinationMs": 271.6532,
+          "beginAndAllocationMs": 0.04579999999998563,
+          "captureMs": 381,
+          "commitAndGuardFinalizationMs": 44.19150000000002,
+          "entryAndRelationsMs": 1.7995000000000232,
+          "legacyRepairAndReconcileMs": 21.206500000000005,
+          "processMs": 405.6462,
+          "resequenceMs": 41.154699999999934,
+          "resolveBeforeBackupMs": 1.6997,
+          "sample": 12
+        },
+        {
+          "backupAndCoordinationMs": 281.61650000000003,
+          "beginAndAllocationMs": 0.044399999999996,
+          "captureMs": 384,
+          "commitAndGuardFinalizationMs": 41.04279999999994,
+          "entryAndRelationsMs": 2.0679000000000087,
+          "legacyRepairAndReconcileMs": 21.672199999999975,
+          "processMs": 404.4753,
+          "resequenceMs": 36.91360000000003,
+          "resolveBeforeBackupMs": 1.3062,
+          "sample": 13
+        },
+        {
+          "backupAndCoordinationMs": 270.1974,
+          "beginAndAllocationMs": 0.04199999999997317,
+          "captureMs": 374,
+          "commitAndGuardFinalizationMs": 39.48649999999998,
+          "entryAndRelationsMs": 1.6046999999999798,
+          "legacyRepairAndReconcileMs": 25.619899999999973,
+          "processMs": 393.5077,
+          "resequenceMs": 36.07960000000003,
+          "resolveBeforeBackupMs": 1.6018,
+          "sample": 14
+        },
+        {
+          "backupAndCoordinationMs": 276.3459,
+          "beginAndAllocationMs": 0.05010000000004311,
+          "captureMs": 386,
+          "commitAndGuardFinalizationMs": 40.382600000000025,
+          "entryAndRelationsMs": 1.625699999999938,
+          "legacyRepairAndReconcileMs": 22.4932,
+          "processMs": 404.6369,
+          "resequenceMs": 43.71659999999997,
+          "resolveBeforeBackupMs": 1.8167,
+          "sample": 15
+        },
+        {
+          "backupAndCoordinationMs": 269.9847,
+          "beginAndAllocationMs": 0.03370000000001028,
+          "captureMs": 381,
+          "commitAndGuardFinalizationMs": 48.68180000000001,
+          "entryAndRelationsMs": 1.6245000000000118,
+          "legacyRepairAndReconcileMs": 19.963900000000024,
+          "processMs": 395.61249999999995,
+          "resequenceMs": 39.850599999999986,
+          "resolveBeforeBackupMs": 1.6703,
+          "sample": 16
+        },
+        {
+          "backupAndCoordinationMs": 278.241,
+          "beginAndAllocationMs": 0.06199999999989814,
+          "captureMs": 395,
+          "commitAndGuardFinalizationMs": 48.90269999999998,
+          "entryAndRelationsMs": 2.487600000000043,
+          "legacyRepairAndReconcileMs": 22.94840000000005,
+          "processMs": 414.0305,
+          "resequenceMs": 41.43430000000001,
+          "resolveBeforeBackupMs": 1.8987,
+          "sample": 17
+        },
+        {
+          "backupAndCoordinationMs": 284.61879999999996,
+          "beginAndAllocationMs": 0.060500000000047294,
+          "captureMs": 420,
+          "commitAndGuardFinalizationMs": 51.69400000000002,
+          "entryAndRelationsMs": 2.3321000000000254,
+          "legacyRepairAndReconcileMs": 26.226499999999987,
+          "processMs": 447.0867,
+          "resequenceMs": 53.722099999999955,
+          "resolveBeforeBackupMs": 1.9361,
+          "sample": 18
+        },
+        {
+          "backupAndCoordinationMs": 283.09860000000003,
+          "beginAndAllocationMs": 0.056100000000014916,
+          "captureMs": 409,
+          "commitAndGuardFinalizationMs": 50.14179999999999,
+          "entryAndRelationsMs": 4.023799999999937,
+          "legacyRepairAndReconcileMs": 24.460499999999968,
+          "processMs": 432.1503,
+          "resequenceMs": 45.471400000000074,
+          "resolveBeforeBackupMs": 2.1053,
+          "sample": 19
+        }
+      ]
+    },
+    {
+      "databaseBytes": 41230336,
+      "entries": 100000,
+      "phasesMs": {
+        "backupAndCoordinationMs": {
+          "max": 5357.9581,
+          "min": 1969.6082000000001,
+          "p50": 2049.2041000000004,
+          "p95": 3122.01
+        },
+        "beginAndAllocationMs": {
+          "max": 0.06859999999960564,
+          "min": 0.03550000000041109,
+          "p50": 0.050499999999829015,
+          "p95": 0.0648999999998523
+        },
+        "captureMs": {
+          "max": 7413.0,
+          "min": 2176.0,
+          "p50": 2448.0,
+          "p95": 4969.0
+        },
+        "commitAndGuardFinalizationMs": {
+          "max": 283.34670000000006,
+          "min": 11.054900000000089,
+          "p50": 54.172000000000025,
+          "p95": 268.52160000000003
+        },
+        "entryAndRelationsMs": {
+          "max": 14.524900000000343,
+          "min": 8.82609999999977,
+          "p50": 9.645799999999781,
+          "p95": 12.351900000000114
+        },
+        "legacyRepairAndReconcileMs": {
+          "max": 206.1152000000002,
+          "min": 102.37560000000008,
+          "p50": 114.10060000000044,
+          "p95": 167.1307999999999
+        },
+        "processMs": {
+          "max": 7493.280900000001,
+          "min": 2202.2045000000003,
+          "p50": 2475.6694,
+          "p95": 5014.9077
+        },
+        "resequenceMs": {
+          "max": 1549.0491000000002,
+          "min": 78.61099999999988,
+          "p50": 121.6248999999998,
+          "p95": 1431.1640000000002
+        },
+        "resolveBeforeBackupMs": {
+          "max": 4.8446,
+          "min": 1.3149,
+          "p50": 1.5269,
+          "p95": 4.1472
+        }
+      },
+      "samples": [
+        {
+          "backupAndCoordinationMs": 1982.5966,
+          "beginAndAllocationMs": 0.03550000000041109,
+          "captureMs": 2194,
+          "commitAndGuardFinalizationMs": 11.221599999999853,
+          "entryAndRelationsMs": 8.830699999999524,
+          "legacyRepairAndReconcileMs": 102.63909999999987,
+          "processMs": 2221.7774,
+          "resequenceMs": 87.01710000000048,
+          "resolveBeforeBackupMs": 1.9196,
+          "sample": 0
+        },
+        {
+          "backupAndCoordinationMs": 2008.2066,
+          "beginAndAllocationMs": 0.0648999999998523,
+          "captureMs": 2293,
+          "commitAndGuardFinalizationMs": 11.786999999999807,
+          "entryAndRelationsMs": 12.30540000000019,
+          "legacyRepairAndReconcileMs": 138.3524,
+          "processMs": 2312.8504,
+          "resequenceMs": 121.6248999999998,
+          "resolveBeforeBackupMs": 1.3149,
+          "sample": 1
+        },
+        {
+          "backupAndCoordinationMs": 1996.5795,
+          "beginAndAllocationMs": 0.043400000000019645,
+          "captureMs": 2223,
+          "commitAndGuardFinalizationMs": 13.671199999999772,
+          "entryAndRelationsMs": 10.63799999999992,
+          "legacyRepairAndReconcileMs": 116.18959999999993,
+          "processMs": 2249.557,
+          "resequenceMs": 84.72440000000006,
+          "resolveBeforeBackupMs": 1.4337,
+          "sample": 2
+        },
+        {
+          "backupAndCoordinationMs": 1990.6026,
+          "beginAndAllocationMs": 0.043400000000019645,
+          "captureMs": 2247,
+          "commitAndGuardFinalizationMs": 12.35739999999987,
+          "entryAndRelationsMs": 12.09139999999934,
+          "legacyRepairAndReconcileMs": 116.45010000000025,
+          "processMs": 2272.9564,
+          "resequenceMs": 113.79960000000028,
+          "resolveBeforeBackupMs": 1.6943,
+          "sample": 3
+        },
+        {
+          "backupAndCoordinationMs": 2031.4796999999999,
+          "beginAndAllocationMs": 0.0488999999997759,
+          "captureMs": 2261,
+          "commitAndGuardFinalizationMs": 11.054900000000089,
+          "entryAndRelationsMs": 9.425300000000334,
+          "legacyRepairAndReconcileMs": 113.8415,
+          "processMs": 2281.1341,
+          "resequenceMs": 93.88909999999987,
+          "resolveBeforeBackupMs": 2.0059,
+          "sample": 4
+        },
+        {
+          "backupAndCoordinationMs": 1979.0137,
+          "beginAndAllocationMs": 0.04629999999951906,
+          "captureMs": 2198,
+          "commitAndGuardFinalizationMs": 14.132400000000416,
+          "entryAndRelationsMs": 8.826300000000174,
+          "legacyRepairAndReconcileMs": 105.44060000000013,
+          "processMs": 2219.9597999999996,
+          "resequenceMs": 88.74240000000009,
+          "resolveBeforeBackupMs": 2.0532,
+          "sample": 5
+        },
+        {
+          "backupAndCoordinationMs": 1969.6082000000001,
+          "beginAndAllocationMs": 0.05139999999983047,
+          "captureMs": 2176,
+          "commitAndGuardFinalizationMs": 15.102100000000064,
+          "entryAndRelationsMs": 9.41879999999992,
+          "legacyRepairAndReconcileMs": 102.37560000000008,
+          "processMs": 2202.2045000000003,
+          "resequenceMs": 78.61099999999988,
+          "resolveBeforeBackupMs": 1.3326,
+          "sample": 6
+        },
+        {
+          "backupAndCoordinationMs": 1983.8205,
+          "beginAndAllocationMs": 0.04550000000017462,
+          "captureMs": 2216,
+          "commitAndGuardFinalizationMs": 12.104800000000068,
+          "entryAndRelationsMs": 8.82609999999977,
+          "legacyRepairAndReconcileMs": 107.36539999999991,
+          "processMs": 2234.3588,
+          "resequenceMs": 102.94950000000017,
+          "resolveBeforeBackupMs": 1.4610999999999998,
+          "sample": 7
+        },
+        {
+          "backupAndCoordinationMs": 2138.1287999999995,
+          "beginAndAllocationMs": 0.05110000000013315,
+          "captureMs": 2448,
+          "commitAndGuardFinalizationMs": 54.172000000000025,
+          "entryAndRelationsMs": 10.275199999999586,
+          "legacyRepairAndReconcileMs": 133.5310000000004,
+          "processMs": 2475.6694,
+          "resequenceMs": 110.56020000000035,
+          "resolveBeforeBackupMs": 1.4828,
+          "sample": 8
+        },
+        {
+          "backupAndCoordinationMs": 2049.2041000000004,
+          "beginAndAllocationMs": 0.052199999999629654,
+          "captureMs": 2266,
+          "commitAndGuardFinalizationMs": 12.473700000000008,
+          "entryAndRelationsMs": 9.196199999999862,
+          "legacyRepairAndReconcileMs": 106.01670000000013,
+          "processMs": 2291.5175,
+          "resequenceMs": 85.80450000000019,
+          "resolveBeforeBackupMs": 4.1472,
+          "sample": 9
+        },
+        {
+          "backupAndCoordinationMs": 1999.8072,
+          "beginAndAllocationMs": 0.050499999999829015,
+          "captureMs": 3031,
+          "commitAndGuardFinalizationMs": 177.43570000000045,
+          "entryAndRelationsMs": 10.268399999999474,
+          "legacyRepairAndReconcileMs": 114.10060000000044,
+          "processMs": 3054.774,
+          "resequenceMs": 728.6185,
+          "resolveBeforeBackupMs": 1.5492,
+          "sample": 10
+        },
+        {
+          "backupAndCoordinationMs": 2180.0521,
+          "beginAndAllocationMs": 0.05490000000008877,
+          "captureMs": 3246,
+          "commitAndGuardFinalizationMs": 252.88149999999996,
+          "entryAndRelationsMs": 9.369200000000092,
+          "legacyRepairAndReconcileMs": 113.66460000000006,
+          "processMs": 3275.1663999999996,
+          "resequenceMs": 688.9265999999998,
+          "resolveBeforeBackupMs": 1.4313,
+          "sample": 11
+        },
+        {
+          "backupAndCoordinationMs": 2407.7929,
+          "beginAndAllocationMs": 0.04300000000012005,
+          "captureMs": 3539,
+          "commitAndGuardFinalizationMs": 195.9373999999998,
+          "entryAndRelationsMs": 8.871899999999641,
+          "legacyRepairAndReconcileMs": 112.98720000000003,
+          "processMs": 3561.1842,
+          "resequenceMs": 812.2404000000001,
+          "resolveBeforeBackupMs": 1.8942,
+          "sample": 12
+        },
+        {
+          "backupAndCoordinationMs": 2607.4678000000004,
+          "beginAndAllocationMs": 0.05610000000024229,
+          "captureMs": 4021,
+          "commitAndGuardFinalizationMs": 150.11040000000003,
+          "entryAndRelationsMs": 12.351900000000114,
+          "legacyRepairAndReconcileMs": 142.98839999999927,
+          "processMs": 4047.8771,
+          "resequenceMs": 1107.4110999999998,
+          "resolveBeforeBackupMs": 1.5234,
+          "sample": 13
+        },
+        {
+          "backupAndCoordinationMs": 2471.8463,
+          "beginAndAllocationMs": 0.047999999999774445,
+          "captureMs": 3634,
+          "commitAndGuardFinalizationMs": 209.63650000000007,
+          "entryAndRelationsMs": 11.96810000000005,
+          "legacyRepairAndReconcileMs": 162.26589999999987,
+          "processMs": 3658.3683,
+          "resequenceMs": 776.9138000000003,
+          "resolveBeforeBackupMs": 1.3561,
+          "sample": 14
+        },
+        {
+          "backupAndCoordinationMs": 2696.8773,
+          "beginAndAllocationMs": 0.04730000000017753,
+          "captureMs": 4279,
+          "commitAndGuardFinalizationMs": 268.52160000000003,
+          "entryAndRelationsMs": 11.701799999999821,
+          "legacyRepairAndReconcileMs": 146.13830000000007,
+          "processMs": 4301.902700000001,
+          "resequenceMs": 1154.8577,
+          "resolveBeforeBackupMs": 1.5269,
+          "sample": 15
+        },
+        {
+          "backupAndCoordinationMs": 5357.9581,
+          "beginAndAllocationMs": 0.06859999999960564,
+          "captureMs": 7413,
+          "commitAndGuardFinalizationMs": 283.34670000000006,
+          "entryAndRelationsMs": 14.524900000000343,
+          "legacyRepairAndReconcileMs": 206.1152000000002,
+          "processMs": 7493.280900000001,
+          "resequenceMs": 1549.0491000000002,
+          "resolveBeforeBackupMs": 2.648,
+          "sample": 16
+        },
+        {
+          "backupAndCoordinationMs": 3122.01,
+          "beginAndAllocationMs": 0.06379999999990105,
+          "captureMs": 4969,
+          "commitAndGuardFinalizationMs": 234.79649999999947,
+          "entryAndRelationsMs": 11.502199999999903,
+          "legacyRepairAndReconcileMs": 167.1307999999999,
+          "processMs": 5014.9077,
+          "resequenceMs": 1431.1640000000002,
+          "resolveBeforeBackupMs": 2.3882,
+          "sample": 17
+        },
+        {
+          "backupAndCoordinationMs": 2733.7651,
+          "beginAndAllocationMs": 0.057599999999638385,
+          "captureMs": 3977,
+          "commitAndGuardFinalizationMs": 173.13449999999966,
+          "entryAndRelationsMs": 9.093400000000202,
+          "legacyRepairAndReconcileMs": 118.24450000000024,
+          "processMs": 4007.1307,
+          "resequenceMs": 938.5902000000001,
+          "resolveBeforeBackupMs": 4.8446,
+          "sample": 18
+        },
+        {
+          "backupAndCoordinationMs": 2751.5365,
+          "beginAndAllocationMs": 0.05050000000028376,
+          "captureMs": 3867,
+          "commitAndGuardFinalizationMs": 132.76249999999982,
+          "entryAndRelationsMs": 9.645799999999781,
+          "legacyRepairAndReconcileMs": 105.24469999999974,
+          "processMs": 3889.6009,
+          "resequenceMs": 866.5489000000002,
+          "resolveBeforeBackupMs": 1.5081,
+          "sample": 19
+        }
+      ]
+    }
+  ],
+  "synthetic": true
+}

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0-dev.22 - 2026-09-14
+
+### Added
+
+- Twenty-sample shared-core benchmark with separate backup, identity/repair,
+  transaction and resequencing checkpoint timings on synthetic journals.
+
 ## 0.2.0-dev.21 - 2026-09-14
 
 ### Fixed

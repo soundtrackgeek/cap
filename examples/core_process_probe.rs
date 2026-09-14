@@ -7,9 +7,11 @@ use chrono::DateTime;
 use rusqlite::Connection;
 use serde_json::{json, Value};
 use std::{
+    collections::BTreeMap,
     fs,
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
+    sync::Mutex,
     thread,
     time::{Duration, Instant},
 };
@@ -204,7 +206,12 @@ fn child(args: &[String]) -> Result<()> {
         _ => {
             let checkpoint = args.get(3).cloned().unwrap_or_default();
             let capture_started = Instant::now();
+            let checkpoints = Mutex::new(BTreeMap::<String, f64>::new());
             let result = capture_entry_with_hooks_for_database(request, &|point| {
+                checkpoints.lock().unwrap().insert(
+                    format!("{point:?}"),
+                    capture_started.elapsed().as_secs_f64() * 1000.0,
+                );
                 if format!("{point:?}") == checkpoint {
                     pause()?;
                 } else if format!("resume:{point:?}") == checkpoint {
@@ -224,7 +231,7 @@ fn child(args: &[String]) -> Result<()> {
                 "{}",
                 match result {
                     Ok(receipt) =>
-                        json!({"ok":true,"receipt":receipt,"captureElapsedMs":capture_started.elapsed().as_millis()}),
+                        json!({"ok":true,"receipt":receipt,"captureElapsedMs":capture_started.elapsed().as_millis(),"checkpointsMs":checkpoints.into_inner().unwrap()}),
                     Err(error) =>
                         json!({"ok":false,"error":error,"captureElapsedMs":capture_started.elapsed().as_millis()}),
                 }
@@ -406,8 +413,9 @@ fn benchmark() -> Result<()> {
         tx.commit()?;
         connection.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);")?;
         drop(connection);
+        let database_bytes = fs::metadata(&lab.db)?.len();
         let mut samples = Vec::new();
-        for index in 0..3 {
+        for index in 0..20 {
             let started = Instant::now();
             let result = lab.capture(&lab.request(&format!("bench{index}")))?;
             ensure!(
@@ -415,16 +423,57 @@ fn benchmark() -> Result<()> {
                 "benchmark capture failed at {size}: {result}"
             );
             ensure!(lab.count()? == size + index + 1, "benchmark count mismatch");
-            samples.push(started.elapsed().as_millis());
+            let elapsed_ms = started.elapsed().as_secs_f64() * 1000.0;
+            let checkpoint = |name: &str| -> Result<f64> {
+                result["checkpointsMs"][name]
+                    .as_f64()
+                    .with_context(|| format!("missing checkpoint {name}"))
+            };
+            samples.push(json!({
+                "sample":index, "processMs":elapsed_ms,
+                "captureMs":result["captureElapsedMs"],
+                "resolveBeforeBackupMs":checkpoint("BeforeBackup")?,
+                "backupAndCoordinationMs":checkpoint("AfterBackup")? - checkpoint("BeforeBackup")?,
+                "legacyRepairAndReconcileMs":checkpoint("BeforeBegin")? - checkpoint("AfterBackup")?,
+                "beginAndAllocationMs":checkpoint("BeforeInsert")? - checkpoint("BeforeBegin")?,
+                "entryAndRelationsMs":checkpoint("BeforeResequence")? - checkpoint("BeforeInsert")?,
+                "resequenceMs":checkpoint("BeforeCommit")? - checkpoint("BeforeResequence")?,
+                "commitAndGuardFinalizationMs":checkpoint("AfterCommit")? - checkpoint("BeforeCommit")?,
+            }));
         }
-        lab.invariants(size + 3)?;
-        eprintln!("Core synthetic benchmark: {size} entries: {samples:?} ms");
-        evidence.push(json!({"entries":size,"samplesMs":samples}));
+        lab.invariants(size + 20)?;
+        let mut percentiles = BTreeMap::new();
+        for key in [
+            "processMs",
+            "captureMs",
+            "resolveBeforeBackupMs",
+            "backupAndCoordinationMs",
+            "legacyRepairAndReconcileMs",
+            "beginAndAllocationMs",
+            "entryAndRelationsMs",
+            "resequenceMs",
+            "commitAndGuardFinalizationMs",
+        ] {
+            let mut values = samples
+                .iter()
+                .map(|sample| sample[key].as_f64().unwrap())
+                .collect::<Vec<_>>();
+            values.sort_by(f64::total_cmp);
+            percentiles.insert(
+                key,
+                json!({"p50":values[9], "p95":values[18], "min":values[0], "max":values[19]}),
+            );
+        }
+        eprintln!(
+            "Core synthetic benchmark: {size} entries, 20 samples, capture p50={}ms p95={}ms",
+            percentiles["captureMs"]["p50"], percentiles["captureMs"]["p95"]
+        );
+        evidence.push(json!({"entries":size,"databaseBytes":database_bytes,"samples":samples,"phasesMs":percentiles}));
     }
     println!(
         "{}",
         serde_json::to_string_pretty(
-            &json!({"synthetic":true,"measurement":"separate process, shared-core capture only, warm filesystem cache not controlled","samples":evidence})
+            &json!({"synthetic":true,"coreRevision":env!("CAP_CORE_REVISION"),"measurement":"Separate process per sample, shared-core capture only, filesystem cache not controlled. Phase boundaries are injected core checkpoints; backup includes coordination/verification, finalization includes commit and guard/receipt work. No CLI pending/context/rendering work.","samples":evidence})
         )?
     );
     Ok(())
