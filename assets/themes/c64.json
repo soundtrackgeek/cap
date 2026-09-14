@@ -1,0 +1,7 @@
+{
+  "name": "c64",
+  "description": "blue C64 block terminal",
+  "palette": "ocean",
+  "gradient": "line",
+  "border": { "top_left": "█", "top_right": "█", "bottom_left": "█", "bottom_right": "█", "horizontal": "█", "vertical": "█" }
+}

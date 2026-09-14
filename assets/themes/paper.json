@@ -1,0 +1,7 @@
+{
+  "name": "paper",
+  "description": "quiet monochrome paper",
+  "palette": "mono",
+  "gradient": "text",
+  "border": { "top_left": "+", "top_right": "+", "bottom_left": "+", "bottom_right": "+", "horizontal": "-", "vertical": "|" }
+}

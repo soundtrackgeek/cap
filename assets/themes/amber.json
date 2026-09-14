@@ -1,0 +1,7 @@
+{
+  "name": "amber",
+  "description": "warm amber phosphor",
+  "palette": "fire",
+  "gradient": "vertical",
+  "border": { "top_left": "+", "top_right": "+", "bottom_left": "+", "bottom_right": "+", "horizontal": "-", "vertical": "|" }
+}
