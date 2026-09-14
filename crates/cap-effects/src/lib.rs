@@ -26,9 +26,9 @@ pub use render::{
     ColorMode,
 };
 pub use terminal::{
-    animate_frames_with_cancel, animate_text, animate_text_with_cancel, prepare_ansi_output, resolve_output_mode,
-    AnimationResult, ColorChoice, GuardOptions, MotionChoice, MotionMode, OutputRequest,
-    ResolvedOutputMode, TerminalCapabilities, TerminalGuard,
+    animate_frames_with_cancel, animate_text, animate_text_with_cancel, prepare_ansi_output,
+    resolve_output_mode, AnimationResult, ColorChoice, GuardOptions, MotionChoice, MotionMode,
+    OutputRequest, ResolvedOutputMode, TerminalCapabilities, TerminalGuard,
 };
 
 pub const COLOR_CLI_SOURCE_REVISION: &str = "c813f12f8578283b68fa124944c0078f15ccdec3";

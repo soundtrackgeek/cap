@@ -568,7 +568,9 @@ pub fn animate_frames_with_cancel<
         if current_width != caps.width {
             resized = true;
         }
-        let layout_width = current_width.saturating_sub(1).clamp(1, DEFAULT_LAYOUT_WIDTH);
+        let layout_width = current_width
+            .saturating_sub(1)
+            .clamp(1, DEFAULT_LAYOUT_WIDTH);
         let mut frame = if resized {
             frame_at_elapsed(end_seconds, layout_width)
         } else {

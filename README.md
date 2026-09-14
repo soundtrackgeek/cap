@@ -13,7 +13,7 @@ A command-line companion for [Capsule](https://github.com/soundtrackgeek/capsule
 Capture a journal entry from the terminal, using Capsule's active database,
 location settings and weather, with a little color-cli ceremony when it saves.
 
-Implementation is in progress on `codex/cap-capture-cli`. The executable capture
+Implementation is in progress on `codex/cap-integration`. The executable capture
 path is covered by disposable synthetic-journal process tests; live-journal and
 native Windows terminal acceptance remain release work.
 
@@ -61,8 +61,8 @@ calendar dates, visible entries by default, and a cap-local state file for
 non-repeating recall and once-only daily/weekly glints. Garden tiers are
 0 bare, 1–49 seed, 50–199 sprout, 200–499 leaf, and 500+ bloom words; the
 daily and weekly glint thresholds are 50 and 500 words. These commands never
-write journal, XP, badge, or quest rows. Executable registration and
-capture-receipt wiring remain an integration step until the package is accepted.
+write journal, XP, badge, or quest rows. All five commands are registered;
+capture-receipt glints and final motion polish are being integrated.
 Human memory views also expose pure time-injected frames and guarded TTY
 streaming: the unseal cue is capped at 700ms, the seven-day garden grows in at
 400ms, and the calendar uses a static grid capped at 300ms. JSON, quiet, plain,

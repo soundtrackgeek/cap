@@ -2,7 +2,7 @@
 
 Updated: 2026-09-14. Orchestrator: `01a0a088-f06f-7fd1-8024-efdb9922bf6f`.
 
-Foundation, fixtures, effects, personality, journal reads, and headless-core extraction are integrated. R1/R2
+Foundation, fixtures, effects, personality, journal reads, capture/recovery, memory commands, and headless-core extraction are integrated. R1/R2
 feature commands are still being implemented. No live journal is a test fixture.
 
 | Package | Task ID | Worktree | Branch | Status |
@@ -15,9 +15,9 @@ feature commands are still being implemented. No live journal is a test fixture.
 | WP02 | `01a0a0be-0e57-7f41-9968-52050b5d0ddb` | `C:\Users\jtill\.codex\worktrees\f687\capsule_tauri` | `codex/cap-capture-core` | accepted `528eadc7`; integrated in `4272d53`; idle |
 | WP03 | `01a0a0be-81fd-7f41-b949-a88d04f9eaf8` | `C:\Users\jtill\.codex\worktrees\638b\capsule_tauri` | `codex/cap-context` | accepted `1d38cf1` plus root persistence corrections in `279e1cb`/`4272d53`; idle |
 | WP06 | `01a0a0e4-8c56-7431-ad98-2185e98d377f` | `C:\Users\jtill\.codex\worktrees\7b2c\cap` | `codex/cap-reads` | accepted `8d1d469` as `6d045b2`; core `6e7f792` + `0066097` |
-| WP09 | `01a0a120-56cf-7de0-9d0e-907556af4f99` | `C:\Users\jtill\.codex\worktrees\0135\cap` | `codex/cap-memories` | active; cap base `6f37567`, separate metrics core base `279e1cb` |
-| WP05 | `01a0a126-0c9c-7ab3-9685-4268e34fc1f9` | `C:\Users\jtill\.codex\worktrees\46e3\cap` | `codex/cap-capture-cli` | active; base `cff046b` |
-| WP10 | `01a0a127-151c-7b80-9134-33a63e426279` | `C:\Users\jtill\.codex\worktrees\ac36\capsule_tauri` | `codex/cap-external-refresh` | active; core base `4272d53` |
+| WP09 | `01a0a120-56cf-7de0-9d0e-907556af4f99` | `C:\Users\jtill\.codex\worktrees\0135\cap` | `codex/cap-memories` | accepted `94915c6`; core integrated in `4888a2a` |
+| WP05 | `01a0a126-0c9c-7ab3-9685-4268e34fc1f9` | `C:\Users\jtill\.codex\worktrees\46e3\cap` | `codex/cap-capture-cli` | accepted `e91f901` + `7d8192a`; root motion review active |
+| WP10 | `01a0a127-151c-7b80-9134-33a63e426279` | `C:\Users\jtill\.codex\worktrees\ac36\capsule_tauri` | `codex/cap-external-refresh` | integrated `7c0c9e4` + `0972289`; scroll follow-up active |
 
 Every worker uses `gpt-5.6-luna` with `max` reasoning. Owned files and dependencies
 are specified in PLAN.md and each task brief. WP02/WP03 communicate directly about
@@ -95,4 +95,14 @@ WP10 implementation also overlaps the CLI work now that the shared core and
 desktop regression tests pass. Native R1 interoperability remains a release gate;
 this scheduling adjustment neither waives it nor substitutes mock UI evidence.
 
-WP05, WP08–WP12 and the release/native acceptance gates remain outstanding.
+Capture/recovery and memory candidates are now integrated: cap `e91f901` and
+`7d8192a`, memory `94915c6`, shared core `4888a2a`. Combined verification passes
+111 core tests, 80 desktop tests (one live provider test ignored), 54 frontend
+tests, and the cap workspace including seven independent capture acceptance
+checks. Test-hook process checks pass 15 scenarios. These use synthetic data.
+
+WP08 writer is next; WP11 delivery runs in task
+`01a0a168-3923-73d1-b823-ad6c90db4596`, worktree
+`C:\Users\jtill\.codex\worktrees\b3cd\cap`, branch `codex/cap-delivery`.
+WP10 follow-up targets actual scroll restoration and deferred selection.
+Final motion, integration, installation and native acceptance remain outstanding.

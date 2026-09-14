@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0-dev.24 - 2026-09-14
+
+### Added
+
+- Integrated durable capture/recovery and all five memory commands against the
+  combined shared core, with independent executable acceptance checks for text
+  fidelity, metadata, retry binding, failed backups, and input validation.
+
 ## 0.2.0-dev.22 - 2026-09-14
 
 ### Added

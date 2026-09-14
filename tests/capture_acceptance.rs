@@ -1,0 +1,251 @@
+//! Orchestrator acceptance at the executable boundary, independent of the
+//! capture implementation's fault hooks. Every invocation owns its whole lab.
+mod support;
+
+use serde_json::Value;
+use std::{
+    fs,
+    io::Write,
+    process::{Command, Output, Stdio},
+};
+use support::Fixture;
+
+fn command(fixture: &Fixture) -> Command {
+    // Allows reviewing an immutable worker executable before cherry-picking
+    // its implementation. The child still receives only the fixture env.
+    if let Some(executable) = std::env::var_os("CAP_ACCEPTANCE_EXECUTABLE") {
+        let mut command = Command::new(executable);
+        command.env_clear().envs(fixture.isolated_environment());
+        command.current_dir(fixture.root.path());
+        command
+    } else {
+        fixture.command()
+    }
+}
+
+fn envelope(output: Output, expected_exit: i32) -> Value {
+    assert_eq!(
+        output.status.code(),
+        Some(expected_exit),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(!output.stdout.contains(&0x1b));
+    assert!(!output.stderr.contains(&0x1b));
+    let value: Value = serde_json::from_slice(&output.stdout).expect("one JSON object");
+    assert_eq!(value["schemaVersion"], 1);
+    assert_eq!(value["ok"], expected_exit == 0);
+    assert!(output.stdout.ends_with(b"\n"));
+    value
+}
+
+fn saved(fixture: &Fixture, args: &[&str]) -> Value {
+    envelope(
+        command(fixture)
+            .args(["--json", "--no-context"])
+            .args(args)
+            .output()
+            .unwrap(),
+        0,
+    )
+}
+
+#[test]
+fn file_content_survives_exactly_and_display_controls_never_enter_storage() {
+    let fixture = Fixture::new();
+    let text = "  # Harbor\r\n\r\nCafé · 窓 · 👩🏽‍💻\rtrailing  \r\n";
+    let input = fixture.root.path().join("note with spaces.md");
+    let mut bytes = vec![0xef, 0xbb, 0xbf];
+    bytes.extend_from_slice(text.as_bytes());
+    fs::write(&input, bytes).unwrap();
+    let result = envelope(
+        command(&fixture)
+            .args(["--json", "--no-context", "--theme", "neon", "add", "--file"])
+            .arg(&input)
+            .output()
+            .unwrap(),
+        0,
+    );
+    assert_eq!(result["command"], "add");
+    assert!(
+        result["data"].get("text").is_none(),
+        "capture receipt leaked full body"
+    );
+    let uuid = result["data"]["entryUuid"].as_str().unwrap();
+    let shown = saved(&fixture, &["show", uuid]);
+    assert_eq!(
+        shown["data"]["text"],
+        text.replace("\r\n", "\n").replace('\r', "\n")
+    );
+    assert!(!shown["data"]["text"].as_str().unwrap().contains('\x1b'));
+}
+
+#[test]
+fn shell_ambiguities_and_deliberate_identical_entries_are_preserved() {
+    let fixture = Fixture::new();
+    let a = saved(&fixture, &["--", "today", "was wonderful"]);
+    let b = saved(&fixture, &["add", "--", "today was wonderful"]);
+    let a_uuid = a["data"]["entryUuid"].as_str().unwrap();
+    let b_uuid = b["data"]["entryUuid"].as_str().unwrap();
+    assert_ne!(a_uuid, b_uuid, "ordinary repeated text was deduplicated");
+    for uuid in [a_uuid, b_uuid] {
+        assert_eq!(
+            saved(&fixture, &["show", uuid])["data"]["text"],
+            "today was wonderful"
+        );
+    }
+    let literal = saved(&fixture, &["add", "--", "--mood", "literal"]);
+    assert_eq!(
+        saved(
+            &fixture,
+            &["show", literal["data"]["entryUuid"].as_str().unwrap()]
+        )["data"]["text"],
+        "--mood literal"
+    );
+    let before = fixture.snapshot().unwrap();
+    envelope(
+        command(&fixture)
+            .args(["--json", "doctor", "nonsense"])
+            .output()
+            .unwrap(),
+        2,
+    );
+    fixture.assert_snapshot_unchanged(&before).unwrap();
+}
+
+#[test]
+fn preflight_errors_and_failed_backup_never_claim_a_save() {
+    let fixture = Fixture::new();
+    let before = fixture.snapshot().unwrap();
+    let bad_theme = envelope(
+        command(&fixture)
+            .args(["--json", "--theme", "banana", "add", "No mutation"])
+            .output()
+            .unwrap(),
+        2,
+    );
+    assert!(!bad_theme["ok"].as_bool().unwrap());
+    fixture.assert_snapshot_unchanged(&before).unwrap();
+    let blocked = fixture.root.path().join("backup-target-file");
+    fs::write(&blocked, "synthetic blocker").unwrap();
+    let backup = envelope(
+        command(&fixture)
+            .env("CAPSULE_BACKUP_DIR", &blocked)
+            .args([
+                "--json",
+                "--no-context",
+                "add",
+                "--capture-id",
+                "blocked-backup",
+                "No mutation",
+            ])
+            .output()
+            .unwrap(),
+        5,
+    );
+    assert_ne!(backup["data"]["saveState"], "committed");
+    fixture.assert_snapshot_unchanged(&before).unwrap();
+    let pending = saved(&fixture, &["recover", "show", "blocked-backup"]);
+    assert_ne!(pending["data"]["saveState"], "committed");
+}
+
+#[test]
+fn capture_id_retries_match_canonical_content_and_refuse_another_database() {
+    let fixture = Fixture::new();
+    let first = saved(
+        &fixture,
+        &[
+            "add",
+            "--capture-id",
+            "caller-retry",
+            "--tag",
+            " Work ",
+            "--tag",
+            "WORK",
+            "--title",
+            "  Walk  ",
+            "--",
+            "same words",
+        ],
+    );
+    let again = saved(
+        &fixture,
+        &[
+            "add",
+            "--capture-id",
+            "caller-retry",
+            "--tag",
+            "work",
+            "--title",
+            "Walk",
+            "--",
+            "same words",
+        ],
+    );
+    assert_eq!(first["data"]["entryUuid"], again["data"]["entryUuid"]);
+    assert_eq!(first["data"]["createdAt"], again["data"]["createdAt"]);
+    let other = Fixture::new();
+    let before = fixture.snapshot().unwrap();
+    let other_before = other.snapshot().unwrap();
+    let redirected = envelope(
+        command(&fixture)
+            .arg("--db")
+            .arg(&other.db)
+            .args([
+                "--json",
+                "--no-context",
+                "add",
+                "--capture-id",
+                "caller-retry",
+                "--tag",
+                "work",
+                "--title",
+                "Walk",
+                "--",
+                "same words",
+            ])
+            .output()
+            .unwrap(),
+        4,
+    );
+    assert_eq!(redirected["error"]["code"], "DB_REPLACED");
+    fixture.assert_snapshot_unchanged(&before).unwrap();
+    other.assert_snapshot_unchanged(&other_before).unwrap();
+}
+
+#[test]
+fn default_piped_capture_is_one_entry_and_invalid_utf8_is_rejected() {
+    let fixture = Fixture::new();
+    let mut child = command(&fixture)
+        .args(["--json", "--no-context"])
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    child
+        .stdin
+        .take()
+        .unwrap()
+        .write_all(b"one\r\ntwo\r\n")
+        .unwrap();
+    let created = envelope(child.wait_with_output().unwrap(), 0);
+    let shown = saved(
+        &fixture,
+        &["show", created["data"]["entryUuid"].as_str().unwrap()],
+    );
+    assert_eq!(shown["data"]["text"], "one\ntwo\n");
+    let before = fixture.snapshot().unwrap();
+    let invalid = fixture.root.path().join("invalid-utf8.txt");
+    fs::write(&invalid, [0xff, 0xfe, 0x80]).unwrap();
+    envelope(
+        command(&fixture)
+            .args(["--json", "add", "--file"])
+            .arg(invalid)
+            .output()
+            .unwrap(),
+        2,
+    );
+    fixture.assert_snapshot_unchanged(&before).unwrap();
+}
