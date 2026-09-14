@@ -8,6 +8,16 @@
   combined shared core, with independent executable acceptance checks for text
   fidelity, metadata, retry binding, failed backups, and input validation.
 
+## 0.2.0-dev.23 - 2026-09-14
+
+### Added
+
+- Added locked Windows release packaging with SHA-256 manifests, provenance and
+  notices, plus safe per-user install/update/uninstall scripts.
+- Added isolated synthetic smoke guidance and temporary-root installation
+  checks; PATH changes preserve existing entries and never activate completion
+  profiles unless explicitly requested.
+
 ## 0.2.0-dev.22 - 2026-09-14
 
 ### Added
