@@ -4,9 +4,9 @@ A planned command-line companion for [Capsule](https://github.com/soundtrackgeek
 Capture a journal entry from the terminal, using Capsule's active database,
 location settings and weather, with a little color-cli ceremony when it saves.
 
-Implementation is in progress on `codex/cap-integration`. The foundation builds,
-but capture is not connected yet. The commands below describe the intended
-interface; do not use the development build for journal capture yet.
+Implementation is in progress on `codex/cap-integration`. Capture is not
+connected yet, but the standalone effects foundation is runnable for synthetic
+visual QA. Do not use the development build for journal capture yet.
 
 ```powershell
 cap Had a lovely walk by the water
@@ -32,3 +32,13 @@ Tests use synthetic temporary databases; the live journal is not a test fixture.
 The bounded Capsule compatibility matrix can be run with
 `cargo test --test fixture_matrix --locked`; its schema/row snapshot and
 isolation evidence is recorded in [docs/evidence/fixtures.md](docs/evidence/fixtures.md).
+
+The effects crate can be previewed without Capsule or Python:
+
+```powershell
+cargo run -p cap-effects --example color_cli_demo
+```
+
+It uses owned Unicode-safe layouts, source-backed palettes/gradients, bounded
+fade/shimmer frames, capability-aware ANSI/plain output, and terminal-state
+restoration. The example text is synthetic and is never saved.

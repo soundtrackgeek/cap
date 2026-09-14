@@ -26,6 +26,15 @@
   deterministic seeded clocks, disposable SQLite lock guards and logical
   schema/row snapshots for read-only proof.
 - Fixture-matrix evidence and focused verification command documentation.
+## [0.2.0-dev.2] - 2026-09-14
+
+### Added
+
+- Rust `cap-effects` color-cli port with the eight source palettes, five
+  gradients, smoothstep reveal, bounded shimmer timing, Unicode-cell layout,
+  ANSI capability negotiation, sanitization, and RAII terminal restoration.
+- Synthetic visual-QA example and pinned reference fixtures/provenance. No
+  Python runtime or live Capsule journal is required.
 
 ## [0.2.0-dev.1] - 2026-09-14
 
