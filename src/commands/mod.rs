@@ -1,4 +1,12 @@
 pub mod completions;
 pub mod config;
+pub mod context;
+pub mod doctor;
 pub mod fx;
+pub mod moods;
+pub mod recent;
+pub mod search;
+pub mod show;
+pub mod tags;
 pub mod theme;
+pub mod today;

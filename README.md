@@ -12,6 +12,8 @@ visual QA. Do not use the development build for journal capture yet.
 cap Had a lovely walk by the water
 cap add --mood content --tag life -- 'A quiet evening outside.'
 Get-Content -Raw .\today.md | cap
+cap --db .\capsule.db recent
+cap --db .\capsule.db search 'tag:work after:2026-01-01'
 ```
 
 - [SPEC.md](SPEC.md): behavior, command contract, shared data architecture,
@@ -28,8 +30,12 @@ Development: `cargo test --workspace` and `cargo build`. Work package progress i
 tracked in [docs/implementation-status.md](docs/implementation-status.md).
 Rust 1.95.0 is pinned in rust-toolchain.toml; rustup installs it when needed.
 The development build supports `--help`, `--version`, JSON help/usage errors,
-and the cap-local personality controls from WP07. Capture commands are connected
-only after their work packages pass review.
+cap-local personality controls from WP07, and bounded read handlers for
+`show`, `today`, `recent`, `search`, `tags`, `moods`, `context`, and `doctor`.
+The read handlers bind an explicit Capsule database path, exclude hidden entries
+by default, preserve structured-search fallback diagnostics, and never repair
+legacy IDs or create backups/cache files. Capture commands are connected only
+after their work packages pass review.
 Tests use synthetic temporary databases; the live journal is not a test fixture.
 The shared Capsule core is fetched from a reviewed Git revision recorded in
 Cargo.toml/Cargo.lock; a local Capsule or Python checkout is not needed to build.
@@ -76,7 +82,7 @@ cap completions powershell | Set-Content .\cap-completions.ps1
 `cap fx` uses synthetic text and does not open a journal, network provider, or
 preferences file. Completion output is a script only; review and opt in to it
 explicitly. Metadata suggestions require `CAP_COMPLETIONS_METADATA=1` and use
-read-only `tags`/`moods` queries.
+the same bounded read-only `tags`/`moods` services as the journal commands.
 
 To verify console cancellation without journal access, build
 `cargo build --example fx_interrupt_probe --locked` and run
