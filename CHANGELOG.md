@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.0-dev.8] - 2026-09-14
+
+### Added
+
+- Windows CI with locked dependencies, formatting, Clippy, synthetic tests and a
+  standalone release build.
+- Version output includes the shared core revision; development pins the tested
+  Rust 1.95.0 toolchain, matching the supported compiler declaration.
+
 ## [0.2.0-dev.7] - 2026-09-14
 
 ### Added

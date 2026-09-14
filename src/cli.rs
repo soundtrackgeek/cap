@@ -5,6 +5,7 @@ use std::{ffi::OsString, path::PathBuf};
 #[command(
     name = "cap",
     version,
+    long_version = env!("CAP_LONG_VERSION"),
     about = "A little ceremony for everyday Capsule memories",
     disable_help_subcommand = true,
     after_help = "Write an entry: cap Had a lovely walk\nLiteral command names: cap add -- today was wonderful\nFile capture: cap add --file today.md\nUse --json before a command for machine-readable output."

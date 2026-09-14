@@ -1,0 +1,39 @@
+name: Windows CLI checks
+on:
+  push:
+    branches: [master, 'codex/**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cap-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.95.0 --profile minimal --component clippy --component rustfmt
+      - name: Check formatting
+        run: cargo fmt --all --check
+      - name: Check warnings
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Test synthetic fixtures and commands
+        run: cargo test --workspace --all-targets --locked
+      - name: Build standalone release CLI
+        run: cargo build --release --locked
+      - name: Verify machine version output
+        shell: pwsh
+        run: |
+          $result = & .\target\release\cap.exe --json --version | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0 -or !$result.ok -or $result.schemaVersion -ne 1) {
+            throw 'Invalid CLI version response'
+          }
