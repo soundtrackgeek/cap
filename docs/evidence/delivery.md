@@ -5,6 +5,12 @@
 shared core `4888a2a33ab65a1833cdf5e6cbdad38baa3d4030`. Normal release/default
 features; synthetic crash hooks are not enabled in the installed executable.
 
+[Windows CI run 34894762158](https://github.com/soundtrackgeek/cap/actions/runs/34894762158)
+passed for that exact source: formatting, strict Clippy, all workspace tests,
+independent crash/concurrency probes, CLI fault hooks, standalone release build,
+PowerShell installation rollback/PATH tests, fresh-shell capture and JSON version.
+Later commits update only verification documentation.
+
 - Archive: `dist/cap-0.2.0-dev.28-windows-x86_64.zip`.
 - Archive SHA-256: `157ba921b012e362961479fd689bf9b3b7019c633c8708a8d0511c714e9f179b`.
 - Executable SHA-256: `3d632c77e5b07e82b60b2d72af7fb89505b843a44166cefc605a4ef7d9f53f03`.
