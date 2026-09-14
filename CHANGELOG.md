@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0-dev.25 - 2026-09-14
+
+### Added
+
+- Draft-backed `cap write` with Unicode/grapheme-safe multiline editing,
+  bracketed paste, 500 ms atomic recovery drafts, explicit resume/discard,
+  frozen database identity and backup policy, Gauntlet word-target enforcement,
+  and safe argument-array external-editor hand-off.
+
 ## 0.2.0-dev.24 - 2026-09-14
 
 ### Added
