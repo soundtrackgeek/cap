@@ -12,9 +12,10 @@ feature commands are still being implemented. No live journal is a test fixture.
 | WP04 | `01a0a09b-ad1c-7873-91c7-bda97168c0d3` | `C:\Users\jtill\.codex\worktrees\0e5f\cap` | `codex/cap-effects` | accepted `08537d7` as `a0a46b2`; idle |
 | WP00 fixtures | `01a0a09d-f1d2-77e2-a79f-ad802a30f727` | `C:\Users\jtill\.codex\worktrees\258f\cap` | `codex/cap-fixtures` | accepted `1a6cb4b` as `48fad28`; idle |
 | WP07 | `01a0a0bc-810d-7e42-a5d9-8bc6d7767da9` | `C:\Users\jtill\.codex\worktrees\48b0\cap` | `codex/cap-personality` | accepted `66dcfe4` + `ce5dd49`; idle |
-| WP02 | `01a0a0be-0e57-7f41-9968-52050b5d0ddb` | `C:\Users\jtill\.codex\worktrees\f687\capsule_tauri` | `codex/cap-capture-core` | active; base `d1a02b8` |
-| WP03 | `01a0a0be-81fd-7f41-b949-a88d04f9eaf8` | `C:\Users\jtill\.codex\worktrees\638b\capsule_tauri` | `codex/cap-context` | active; base `d1a02b8` |
+| WP02 | `01a0a0be-0e57-7f41-9968-52050b5d0ddb` | `C:\Users\jtill\.codex\worktrees\f687\capsule_tauri` | `codex/cap-capture-core` | accepted `528eadc7`; integrated in `4272d53`; idle |
+| WP03 | `01a0a0be-81fd-7f41-b949-a88d04f9eaf8` | `C:\Users\jtill\.codex\worktrees\638b\capsule_tauri` | `codex/cap-context` | accepted `1d38cf1` plus root persistence corrections in `279e1cb`/`4272d53`; idle |
 | WP06 | `01a0a0e4-8c56-7431-ad98-2185e98d377f` | `C:\Users\jtill\.codex\worktrees\7b2c\cap` | `codex/cap-reads` | accepted `8d1d469` as `6d045b2`; core `6e7f792` + `0066097` |
+| WP09 | `01a0a120-56cf-7de0-9d0e-907556af4f99` | `C:\Users\jtill\.codex\worktrees\0135\cap` | `codex/cap-memories` | active; cap base `6f37567`, separate metrics core base `279e1cb` |
 
 Every worker uses `gpt-5.6-luna` with `max` reasoning. Owned files and dependencies
 are specified in PLAN.md and each task brief. WP02/WP03 communicate directly about
@@ -52,7 +53,13 @@ Accepted evidence:
   reconciliation and exact-once replay, same-path database replacement rejection,
   and backup-failure refusal. Integrity, references, FTS and retained backups were
   checked. The combined sidecar/SQLite timeout failed at 19.5 seconds against a
-  15-second budget and was returned to the owner; WP02 is not yet accepted.
+  15-second budget and was returned to the owner. The corrected immutable
+  `528eadc7d3ff666f851449ec899c901c39a1f9f2` passed the entire independent
+  process probe, including combined contention at 16,141 ms end to end
+  (process startup included), typed busy/no mutation, and retry after process death.
+- Combined core `4272d53` passed 97 tests and strict Clippy. Root added checks
+  that abandoned context cannot claim unsaved weather and that enrichment rejects
+  a replaced database before backup publication or retention.
 - Preliminary shared-core measurements on new synthetic journals (three debug
   process samples, filesystem cache uncontrolled): 1k entries 98–111 ms; 10k
   311–313 ms; 100k 2536–2651 ms. These are not final CLI p50/p95 measurements.

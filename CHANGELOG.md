@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0-dev.18 - 2026-09-14
+
+### Changed
+
+- Pin the reviewed combined capture/context core with bounded save coordination,
+  pre-backup identity checks and honest context persistence outcomes.
+- Begin the memory experience package in a separate Luna worktree.
+
 ## [0.2.0-dev.16] - 2026-09-14
 
 ### Added

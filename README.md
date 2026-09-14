@@ -1,5 +1,9 @@
 # cap
 
+The development build now pins the reviewed shared capture and context core.
+CLI capture/recovery is the next integration package; it remains disabled until
+its durable local recovery and executable tests are connected.
+
 A command-line companion for [Capsule](https://github.com/soundtrackgeek/capsule_tauri), currently in development.
 Capture a journal entry from the terminal, using Capsule's active database,
 location settings and weather, with a little color-cli ceremony when it saves.
