@@ -61,6 +61,14 @@ pub fn execute(cli: &Cli) -> Result<CommandOutput, AppError> {
             crate::commands::completions::run(shell, &cli.global)
         }
         Some(Command::Fx { name }) => run_fx(name.as_deref(), &cli.global),
+        Some(Command::Show(args)) => crate::commands::show::run(args, &cli.global),
+        Some(Command::Today(args)) => crate::commands::today::run(args, &cli.global),
+        Some(Command::Recent(args)) => crate::commands::recent::run(args, &cli.global),
+        Some(Command::Search(args)) => crate::commands::search::run(args, &cli.global),
+        Some(Command::Tags(args)) => crate::commands::tags::run(args, &cli.global),
+        Some(Command::Moods(args)) => crate::commands::moods::run(args, &cli.global),
+        Some(Command::Context) => crate::commands::context::run(&cli.global),
+        Some(Command::Doctor) => crate::commands::doctor::run(&cli.global),
         _ => Err(AppError::new(
             "NOT_IMPLEMENTED",
             "This command is not connected yet in the foundation development build.",

@@ -2,7 +2,7 @@
 
 Updated: 2026-09-14. Orchestrator: `01a0a088-f06f-7fd1-8024-efdb9922bf6f`.
 
-Foundation, fixtures, effects, personality, and headless-core extraction are integrated. R1/R2
+Foundation, fixtures, effects, personality, journal reads, and headless-core extraction are integrated. R1/R2
 feature commands are still being implemented. No live journal is a test fixture.
 
 | Package | Task ID | Worktree | Branch | Status |
@@ -14,7 +14,7 @@ feature commands are still being implemented. No live journal is a test fixture.
 | WP07 | `01a0a0bc-810d-7e42-a5d9-8bc6d7767da9` | `C:\Users\jtill\.codex\worktrees\48b0\cap` | `codex/cap-personality` | accepted `66dcfe4` + `ce5dd49`; idle |
 | WP02 | `01a0a0be-0e57-7f41-9968-52050b5d0ddb` | `C:\Users\jtill\.codex\worktrees\f687\capsule_tauri` | `codex/cap-capture-core` | active; base `d1a02b8` |
 | WP03 | `01a0a0be-81fd-7f41-b949-a88d04f9eaf8` | `C:\Users\jtill\.codex\worktrees\638b\capsule_tauri` | `codex/cap-context` | active; base `d1a02b8` |
-| WP06 | `01a0a0e4-8c56-7431-ad98-2185e98d377f` | `C:\Users\jtill\.codex\worktrees\7b2c\cap` | `codex/cap-reads` | active; base `3b5182f` |
+| WP06 | `01a0a0e4-8c56-7431-ad98-2185e98d377f` | `C:\Users\jtill\.codex\worktrees\7b2c\cap` | `codex/cap-reads` | accepted `8d1d469` as `6d045b2`; core `6e7f792` + `0066097` |
 
 Every worker uses `gpt-5.6-luna` with `max` reasoning. Owned files and dependencies
 are specified in PLAN.md and each task brief. WP02/WP03 communicate directly about
@@ -56,5 +56,19 @@ Accepted evidence:
 - Preliminary shared-core measurements on new synthetic journals (three debug
   process samples, filesystem cache uncontrolled): 1k entries 98–111 ms; 10k
   311–313 ms; 100k 2536–2651 ms. These are not final CLI p50/p95 measurements.
+- WP06: read-only core/search adapters passed 91 core and 74 desktop tests
+  (one live smoke ignored). Root pinned `0066097`, connected all eight read
+  commands, and passed the full cap workspace plus four process checks (two
+  scenarios and two fixture self-checks). Process tests exercise all eight
+  commands, pagination, hidden entries, malformed presentation settings and
+  explicit missing paths; journal snapshots remain unchanged.
+- Root reproduced a Windows preference replacement race on repetition 14,
+  corrected publication, and passed 30 strengthened repetitions, all seven
+  preference tests and personality process checks. See [state-file evidence](evidence/windows-state.md).
 
-WP05, WP06, WP08–WP12 and the release/native acceptance gates remain outstanding.
+The memory package may begin from the accepted read/presentation APIs while
+capture corrections finish. This scheduling overlap does not waive any R1/R2
+release gate. Capture remains disabled in the executable until its write and
+context APIs pass combined acceptance.
+
+WP05, WP08–WP12 and the release/native acceptance gates remain outstanding.

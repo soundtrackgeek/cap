@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.0-dev.16] - 2026-09-14
+
+### Added
+
+- Connected all R1 read commands to the executable and pinned the reviewed
+  read API in the shared Capsule core. Capture remains disabled while its
+  mutation/context acceptance corrections are completed.
+
 ## [0.2.0-dev.15] - 2026-09-14
 
 ### Fixed

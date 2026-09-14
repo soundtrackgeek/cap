@@ -1,7 +1,7 @@
 # cap — a little ceremony for everyday memories
 
 Status: implementation in progress. The command grammar, shared-core extraction,
-effects, themes, preferences and completions are integrated. Capture and the
+effects, themes, preferences, completions and journal reads are integrated. Capture and the
 remaining R1/R2 features are under review; see [implementation status](docs/implementation-status.md).
 Specification version: 0.1.0 · 2026-09-14
 
