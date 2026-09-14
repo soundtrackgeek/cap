@@ -2,9 +2,13 @@ pub mod app;
 pub mod cancellation;
 pub mod cli;
 pub mod commands;
+pub mod context_cache;
 pub mod contracts;
 pub mod input;
 pub mod output;
 pub mod preferences;
 pub mod query;
+pub mod recovery;
+#[cfg(feature = "test-hooks")]
+pub(crate) mod test_hooks;
 pub mod ui;

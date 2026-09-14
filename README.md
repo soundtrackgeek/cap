@@ -1,8 +1,8 @@
 # cap
 
-The development build now pins the reviewed shared capture and context core.
-CLI capture/recovery is the next integration package; it remains disabled until
-its durable local recovery and executable tests are connected.
+The development build pins the reviewed shared capture and context core and
+includes the quick-capture/recovery vertical slice. Capture writes are guarded
+by a verified backup, frozen database identity and cap-local recovery records.
 
 Run `cargo run --locked --example core_process_probe` for the isolated shared-core
 crash/concurrency check. It creates and removes its own temporary synthetic
@@ -13,14 +13,19 @@ A command-line companion for [Capsule](https://github.com/soundtrackgeek/capsule
 Capture a journal entry from the terminal, using Capsule's active database,
 location settings and weather, with a little color-cli ceremony when it saves.
 
-Implementation is in progress on `codex/cap-integration`. Capture is not
-connected yet, but the standalone effects foundation is runnable for synthetic
-visual QA. Do not use the development build for journal capture yet.
+Implementation is in progress on `codex/cap-capture-cli`. The executable capture
+path is covered by disposable synthetic-journal process tests; live-journal and
+native Windows terminal acceptance remain release work.
 
 ```powershell
 cap Had a lovely walk by the water
 cap add --mood content --tag life -- 'A quiet evening outside.'
 Get-Content -Raw .\today.md | cap
+cap add --json --capture-id walk-2026-09-14 -- 'A caller-retryable note'
+cap status --capture-id walk-2026-09-14
+cap recover list
+cap recover retry walk-2026-09-14
+cap enrich <entry-uuid>
 cap --db .\capsule.db recent
 cap --db .\capsule.db search 'tag:work after:2026-01-01'
 ```
@@ -39,12 +44,16 @@ Development: `cargo test --workspace` and `cargo build`. Work package progress i
 tracked in [docs/implementation-status.md](docs/implementation-status.md).
 Rust 1.95.0 is pinned in rust-toolchain.toml; rustup installs it when needed.
 The development build supports `--help`, `--version`, JSON help/usage errors,
-cap-local personality controls from WP07, and bounded read handlers for
-`show`, `today`, `recent`, `search`, `tags`, `moods`, `context`, and `doctor`.
+cap-local personality controls from WP07, quick capture from positional words,
+files or stdin, durable `status`/`recover` operations, explicit context
+enrichment, and bounded read handlers for `show`, `today`, `recent`, `search`,
+`tags`, `moods`, `context`, and `doctor`.
 The read handlers bind an explicit Capsule database path, exclude hidden entries
 by default, preserve structured-search fallback diagnostics, and never repair
-legacy IDs or create backups/cache files. Capture commands are connected only
-after their work packages pass review.
+legacy IDs or create backups/cache files. Capture uses one immediate saved UUID,
+optional post-commit context, a 15-minute weather cache and a 30-day receipt
+retention window; `--dry-run` performs no backup, mutation, context or cache
+work, and `--no-context` skips provider/cache work entirely.
 Tests use synthetic temporary databases; the live journal is not a test fixture.
 The shared Capsule core is fetched from a reviewed Git revision recorded in
 Cargo.toml/Cargo.lock; a local Capsule or Python checkout is not needed to build.
@@ -69,7 +78,7 @@ Native verification labs can be generated with `cargo run --example fixture_lab
 --locked -- 5`. These are new synthetic databases in the OS temp directory; see
 [native lab guidance](docs/evidence/native-lab.md) for the isolated launch contract.
 
-Once capture is integrated, build development measurement tools with
+Build development measurement tools with
 `cargo build --release --examples --locked`, then run
 `target\release\examples\benchmark_capture.exe target\release\cap.exe
 target\release\examples\fixture_lab.exe`. It creates fresh synthetic journals,

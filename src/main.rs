@@ -29,7 +29,7 @@ fn run() -> i32 {
         Ok(cli) => cli,
         Err(error) => return print_parse_result(error, json_requested),
     };
-    let command = cli.command.as_ref().map(Command::name).unwrap_or("write");
+    let command = cli.command.as_ref().map(Command::name).unwrap_or("add");
     match app::execute(&cli) {
         Ok(result) => {
             let mut envelope = OutputEnvelope::success(command, result.data);
