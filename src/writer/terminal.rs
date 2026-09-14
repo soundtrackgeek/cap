@@ -188,9 +188,28 @@ pub fn render_frame_with_notice<W: Write>(
     ambient_phase: Option<f64>,
     notice: Option<&str>,
 ) -> io::Result<()> {
-    let width = usize::from(machine.width()).max(20);
-    let height = usize::from(machine.height()).max(5);
-    let border = if presentation.output.color() == cap_effects::ColorMode::Plain {
+    let width = usize::from(machine.width()).saturating_sub(1).max(1);
+    let height = usize::from(machine.height()).max(1);
+    let (cursor_line, _) = machine.buffer().cursor_position();
+    let cursor_cells = machine.buffer().cell_column();
+    if width < 12 || height < 6 {
+        let offset = cursor_cells.saturating_sub(width.saturating_sub(1));
+        let line = machine.buffer().line(cursor_line).unwrap_or_default();
+        execute!(writer, MoveTo(0, 0))?;
+        write_padded(
+            writer,
+            &cell_window(&cap_effects::sanitize_text(line), offset, width),
+            width,
+        )?;
+        execute!(
+            writer,
+            MoveTo(cursor_cells.saturating_sub(offset).min(width - 1) as u16, 0)
+        )?;
+        return writer.flush();
+    }
+    let border = if presentation.output.color() == cap_effects::ColorMode::Plain
+        || presentation.icon_mode == crate::preferences::IconMode::Ascii
+    {
         Border::ascii()
     } else {
         presentation.theme.border()
@@ -199,10 +218,23 @@ pub fn render_frame_with_notice<W: Write>(
     let inner_width = width.saturating_sub(4).max(4);
     let body_width = inner_width;
     let body_capacity = height.saturating_sub(6).max(1);
-    let (cursor_line, _) = machine.buffer().cursor_position();
     let first_line = cursor_line.saturating_sub(body_capacity.saturating_sub(1));
+    let horizontal_offset = cursor_cells.saturating_sub(body_width.saturating_sub(1));
+    let cursor_row = 2 + cursor_line.saturating_sub(first_line);
+    let cursor_col = 2 + cursor_cells.saturating_sub(horizontal_offset);
 
-    execute!(writer, Clear(ClearType::All), MoveTo(0, 0))?;
+    // Ambient motion owns only the rail. Never clear or redraw authored text
+    // for an idle animation frame.
+    if let Some(phase) = ambient_phase {
+        for index in 0..body_capacity {
+            execute!(writer, MoveTo(1, (2 + index) as u16))?;
+            write_rail(writer, presentation, phase, border.vertical)?;
+        }
+        execute!(writer, MoveTo(cursor_col as u16, cursor_row as u16))?;
+        return writer.flush();
+    }
+
+    execute!(writer, MoveTo(0, 0))?;
     write!(
         writer,
         "{}{}{}\r\n",
@@ -226,20 +258,19 @@ pub fn render_frame_with_notice<W: Write>(
     for index in 0..body_capacity {
         let line_index = first_line + index;
         let line = machine.buffer().line(line_index).unwrap_or_default();
-        let rendered = truncate_cells(&cap_effects::sanitize_text(line), body_width);
+        let rendered = cell_window(
+            &cap_effects::sanitize_text(line),
+            horizontal_offset,
+            body_width,
+        );
         write!(writer, "{}", border.vertical)?;
         if let Some(phase) = ambient_phase {
             write_rail(writer, presentation, phase, border.vertical)?;
         } else {
             writer.write_all(border.vertical.to_string().as_bytes())?;
         }
-        write!(
-            writer,
-            "{:width$} {}\r\n",
-            rendered,
-            border.vertical,
-            width = body_width
-        )?;
+        write_padded(writer, &rendered, body_width)?;
+        write!(writer, " {}\r\n", border.vertical)?;
     }
 
     let target = target.or(presentation
@@ -267,18 +298,11 @@ pub fn render_frame_with_notice<W: Write>(
         border.bottom_right
     )?;
 
-    if let Some(notice) = notice.filter(|value| !value.is_empty()) {
-        write!(
-            writer,
-            "\r\nWarning: {}",
-            cap_effects::sanitize_text(notice)
-        )?;
-    }
-
-    let cursor_cells = machine.buffer().cell_column();
-    let cursor_row = 2 + cursor_line.saturating_sub(first_line);
-    let cursor_row = cursor_row.min(height.saturating_sub(1));
-    let cursor_col = (2 + cursor_cells).min(width.saturating_sub(1));
+    let notice = notice
+        .filter(|value| !value.is_empty())
+        .map(|value| format!("Warning: {}", cap_effects::sanitize_text(value)))
+        .unwrap_or_default();
+    write_padded(writer, &truncate_cells(&notice, width), width)?;
     execute!(writer, MoveTo(cursor_col as u16, cursor_row as u16))?;
     writer.flush()
 }
@@ -290,14 +314,37 @@ fn write_panel_row<W: Write>(
     width: usize,
 ) -> io::Result<()> {
     let rendered = truncate_cells(text, width);
-    write!(
-        writer,
-        "{} {:<width$} {}\r\n",
-        vertical,
-        rendered,
-        vertical,
-        width = width
-    )
+    write!(writer, "{vertical} ")?;
+    write_padded(writer, &rendered, width)?;
+    write!(writer, " {vertical}\r\n")
+}
+
+fn write_padded<W: Write>(writer: &mut W, text: &str, width: usize) -> io::Result<()> {
+    use unicode_segmentation::UnicodeSegmentation;
+    let cells: usize = text.graphemes(true).map(cap_effects::grapheme_width).sum();
+    write!(writer, "{text}{}", " ".repeat(width.saturating_sub(cells)))
+}
+
+fn cell_window(text: &str, offset: usize, width: usize) -> String {
+    use unicode_segmentation::UnicodeSegmentation;
+    let mut position = 0;
+    let mut result = String::new();
+    for grapheme in text.graphemes(true) {
+        let cells = cap_effects::grapheme_width(grapheme);
+        let end = position + cells;
+        if position >= offset + width {
+            break;
+        }
+        if end > offset {
+            if position < offset {
+                result.push_str(&" ".repeat((end - offset).min(width)));
+            } else if end <= offset + width {
+                result.push_str(grapheme);
+            }
+        }
+        position = end;
+    }
+    result
 }
 
 fn write_rail<W: Write>(
@@ -400,6 +447,58 @@ mod tests {
         assert!(output.contains("hello"));
         assert!(output.contains("Ctrl+S save"));
         assert!(!output.contains("\x1b[38;"));
+    }
+
+    #[test]
+    fn ambient_frames_touch_only_the_rail_and_preserve_the_body() {
+        let machine = WriterMachine::new("PRIVATE AUTHORED BODY", 40, 12);
+        let mut output = Vec::new();
+        render_frame(
+            &mut output,
+            &machine,
+            &request(),
+            &presentation(),
+            Some(0.5),
+        )
+        .unwrap();
+        let output = String::from_utf8(output).unwrap();
+        assert!(!output.contains("PRIVATE"));
+        assert!(!output.contains("WRITER"));
+        assert!(!output.contains("\x1b[2J"));
+    }
+
+    #[test]
+    fn long_unicode_lines_scroll_to_the_caret_and_fit_actual_cell_width() {
+        use unicode_segmentation::UnicodeSegmentation;
+        let machine = WriterMachine::new("界".repeat(50) + " visible tail", 40, 12);
+        let mut output = Vec::new();
+        render_frame(&mut output, &machine, &request(), &presentation(), None).unwrap();
+        let output = String::from_utf8(output).unwrap();
+        let clean = cap_effects::sanitize_text(&output);
+        assert!(clean.contains("visible tail"));
+        for line in clean.lines() {
+            assert!(
+                line.graphemes(true)
+                    .map(cap_effects::grapheme_width)
+                    .sum::<usize>()
+                    <= 39,
+                "{line}"
+            );
+        }
+        assert_eq!(cell_window("界abc", 1, 3), " ab");
+        let mut tiny = Vec::new();
+        render_frame(
+            &mut tiny,
+            &WriterMachine::new("hello", 3, 2),
+            &request(),
+            &presentation(),
+            None,
+        )
+        .unwrap();
+        assert_eq!(
+            cap_effects::sanitize_text(&String::from_utf8(tiny).unwrap()).trim(),
+            "o"
+        );
     }
 
     #[test]

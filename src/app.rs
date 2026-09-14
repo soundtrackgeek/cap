@@ -3,6 +3,7 @@ use crate::{
     contracts::CliError,
 };
 use serde_json::Value;
+use std::io::IsTerminal;
 
 #[derive(Debug)]
 pub struct CommandOutput {
@@ -55,9 +56,13 @@ pub fn execute(cli: &Cli) -> Result<CommandOutput, AppError> {
         ));
     }
     match &cli.command {
+        None if std::io::stdin().is_terminal() && std::io::stdout().is_terminal() => {
+            crate::commands::write::run_default(&cli.global)
+        }
         None => crate::commands::add::run_default(None, &cli.global),
         Some(Command::Entry(words)) => crate::commands::add::run_default(Some(words), &cli.global),
         Some(Command::Add(args)) => crate::commands::add::run(args, &cli.global),
+        Some(Command::Write(args)) => crate::commands::write::run(args, &cli.global),
         Some(Command::Theme { action }) => crate::commands::theme::run(action, &cli.global),
         Some(Command::Config { action }) => crate::commands::config::run(action, &cli.global),
         Some(Command::Completions { shell }) => {
@@ -90,11 +95,6 @@ pub fn execute(cli: &Cli) -> Result<CommandOutput, AppError> {
         Some(Command::Enrich { identifier }) => {
             crate::commands::enrich::run(identifier, &cli.global)
         }
-        _ => Err(AppError::new(
-            "NOT_IMPLEMENTED",
-            "This command is not connected yet in the foundation development build.",
-            3,
-        )),
     }
 }
 

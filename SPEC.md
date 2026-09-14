@@ -1,8 +1,10 @@
 # cap — a little ceremony for everyday memories
 
-Status: implementation in progress. The command grammar, shared-core extraction,
-effects, themes, preferences, completions and journal reads are integrated. Capture and the
-remaining R1/R2 features are under review; see [implementation status](docs/implementation-status.md).
+Status: R1/R2 CLI features are integrated in the development executable; see
+[implementation status](docs/implementation-status.md) for evidence and visual gates.
+Delivery clarification (2026-09-14): install only the separate CLI. The existing
+Capsule desktop installation stays unchanged. Shared-core source is preserved on
+separate branches; the optional WP10 desktop refresh changes are not delivered.
 Specification version: 0.1.0 · 2026-09-14
 
 ## 1. Product promise
@@ -113,7 +115,8 @@ These are reads: they never save sample entries, add XP, or repair the journal.
 
 ## 4. Command contract
 
-Commands below are proposed release behavior, not commands currently installed.
+Commands below define the implemented CLI behavior. Native release gates remain
+tracked separately from feature implementation.
 
 | Form | Behavior | Release |
 | --- | --- | --- |

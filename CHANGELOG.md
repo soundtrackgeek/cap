@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.2.0-dev.28 - 2026-09-14
+
+### Added
+
+- Isolated console launcher with environment clearing and Windows console-mode
+  restoration checks, plus writer/recovery process acceptance coverage.
+- Windows CI installation lifecycle and fresh-shell capture checks.
+
+### Fixed
+
+- Connect explicit/no-argument interactive writer routing and freeze editable
+  drafts before recovery retries. Preserve editor output until durable storage.
+- Keep long Unicode lines and the caret visible, honor actual terminal width,
+  redraw only the ambient rail, and update the saved-draft indicator when idle.
+
+### Changed
+
+- Deliver only the CLI after the user's clarification; restore Capsule's source
+  checkout to its original master and retain optional desktop work on branches.
+
 ## 0.2.0-dev.27 - 2026-09-14
 
 ### Fixed

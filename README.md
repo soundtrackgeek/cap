@@ -1,13 +1,15 @@
 # cap
 
-The development build pins the reviewed shared capture and context core and
-includes the quick-capture/recovery vertical slice. Capture writes are guarded
+The development build includes quick capture, a draft-backed writer, recovery,
+location/weather, memory views and color-cli effects. Capture writes are guarded
 by a verified backup, frozen database identity and cap-local recovery records.
+Installation adds only the separate `cap.exe`; your existing Capsule app stays
+unchanged. Capsule can be closed while you use cap.
 
 Run `cargo run --locked --example core_process_probe` for the isolated shared-core
 crash/concurrency check. It creates and removes its own temporary synthetic
 journals; it accepts no existing journal path. `-- --bench` measures the core
-on synthetic 1k/10k/100k-entry journals (three process samples per size).
+on synthetic 1k/10k/100k-entry journals (20 process samples per size).
 
 A command-line companion for [Capsule](https://github.com/soundtrackgeek/capsule_tauri), currently in development.
 The Windows delivery scripts build a locked native release archive and install
@@ -15,12 +17,17 @@ it per-user without requiring administrator rights. Capture uses Capsule's
 active database, location settings and weather, with a little color-cli
 ceremony when it saves.
 
-Implementation is in progress on `codex/cap-integration`. The executable capture
-path is covered by disposable synthetic-journal process tests; live-journal and
-native Windows terminal acceptance remain release work.
+The CLI features are integrated on `codex/cap-integration`. Executable capture,
+recovery, writer input and delivery are checked with disposable synthetic journals.
+Actual Windows Terminal visual review and native desktop coexistence remain
+unverified; this is a development build, not a published Capsule desktop release.
 
 ```powershell
 cap Had a lovely walk by the water
+cap write
+cap garden
+cap recall
+cap theme set c64
 cap add --mood content --tag life -- 'A quiet evening outside.'
 Get-Content -Raw .\today.md | cap
 cap add --json --capture-id walk-2026-09-14 -- 'A caller-retryable note'
@@ -91,6 +98,9 @@ plants above its word-count legend. Memory views use available width and preserv
 scrollback; a scene taller than the terminal finishes without repeated redraws.
 Set `preview_visibility never` to hide save previews, or `icon_mode ascii` for
 ASCII decorations. Cached weather keeps its original observation timestamp.
+The writer scrolls long lines to keep the caret visible, respects terminal cell
+width for Unicode, and animates only its side rail while idle. Ctrl+S saves;
+Ctrl+C keeps the draft and exits with code 130; Escape keeps it and exits normally.
 The shared Capsule core is fetched from a reviewed Git revision recorded in
 Cargo.toml/Cargo.lock; a local Capsule or Python checkout is not needed to build.
 Preference updates use a flushed temporary file and same-directory replacement;
@@ -113,6 +123,9 @@ restoration. The example text is synthetic and is never saved.
 Native verification labs can be generated with `cargo run --example fixture_lab
 --locked -- 5`. These are new synthetic databases in the OS temp directory; see
 [native lab guidance](docs/evidence/native-lab.md) for the isolated launch contract.
+`cargo run --example lab_command -- <generated-lab.json> <cap.exe> <arguments>`
+keeps real console input/output while clearing the child environment and checking
+console-mode restoration. It accepts only generated labs under the OS temp path.
 
 Build development measurement tools with
 `cargo build --release --examples --locked`, then run

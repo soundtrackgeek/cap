@@ -33,7 +33,11 @@ jobs:
       - name: Verify CLI crash and recovery hooks on synthetic fixtures
         run: cargo test --locked --features test-hooks --test capture_process
       - name: Build standalone release CLI
-        run: cargo build --release --locked
+        run: cargo build --release --locked --bin cap --example fixture_lab
+      - name: Verify Windows installation rollback and PATH ownership
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests/windows_delivery.ps1
+      - name: Verify fresh-shell installed synthetic capture
+        run: pwsh -NoProfile -File scripts/smoke.ps1 -RunInstallLifecycle
       - name: Verify machine version output
         shell: pwsh
         run: |

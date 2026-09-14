@@ -360,6 +360,17 @@ fn capture_internal_seeded(
         record
     };
 
+    // An explicit recovery retry submits an editable writer draft. Freeze it
+    // under the existing record lock before any shared-core mutation, so a
+    // later writer session cannot edit a request that may have been committed.
+    if record.is_editable_writer_draft() {
+        record.writer_draft = None;
+        record.updated_at = Utc::now();
+        state
+            .write_pending(&record)
+            .map_err(|error| storage_error(error, 5))?;
+    }
+
     let _ = cancellation::install();
     if cancellation::requested() {
         return cancelled_before_commit(&mut record, &state);

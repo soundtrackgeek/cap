@@ -6,6 +6,13 @@ Status: execution in progress using separate Luna tasks and Git worktrees.
 Accepted packages, active owners, commits and verification evidence are tracked
 in [implementation status](docs/implementation-status.md).
 
+Delivery clarification, 2026-09-14: the user wants only a separate CLI installed.
+Keep the existing Capsule installation unchanged. Its source checkout has been
+restored to its original clean `master` at `5db5502`. Preserve the reviewed shared
+core and optional desktop refresh work on their separate branches; do not install
+or release a desktop update. WP10/G13 are outside this CLI delivery. Native visual
+and desktop coexistence checks that could not run remain explicitly unverified.
+
 ## 1. Delivery model
 
 The orchestrator owns architecture, interface contracts, task dispatch, review,

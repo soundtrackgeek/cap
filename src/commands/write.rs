@@ -408,6 +408,16 @@ fn run_interactive(
                     .map_err(map_draft_error)?;
                 machine.mark_persisted();
                 notice = None;
+                terminal::render_frame_with_notice(
+                    terminal_session.writer(),
+                    &machine,
+                    lease.request(),
+                    presentation,
+                    target_display(target, presentation),
+                    None,
+                    None,
+                )
+                .map_err(|error| AppError::new("WRITER_TERMINAL", error.to_string(), 1))?;
             }
 
             let ambient_enabled = presentation.output.motion() == cap_effects::MotionMode::Full

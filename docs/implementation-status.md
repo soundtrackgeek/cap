@@ -2,8 +2,10 @@
 
 Updated: 2026-09-14. Orchestrator: `01a0a088-f06f-7fd1-8024-efdb9922bf6f`.
 
-Foundation, fixtures, effects, personality, journal reads, capture/recovery, memory commands, and headless-core extraction are integrated. R1/R2
-feature commands are still being implemented. No live journal is a test fixture.
+All R1/R2 CLI feature commands are integrated in `0.2.0-dev.28`. Delivery adds only
+cap.exe. Capsule's installed app and real journal are unchanged; its source checkout
+is restored to clean master `5db5502388d5e62e48d75c2e5bbcfab41984118a`. Reviewed core
+and optional desktop work remain on separate branches. No live journal is a fixture.
 
 | Package | Task ID | Worktree | Branch | Status |
 | --- | --- | --- | --- | --- |
@@ -16,8 +18,10 @@ feature commands are still being implemented. No live journal is a test fixture.
 | WP03 | `01a0a0be-81fd-7f41-b949-a88d04f9eaf8` | `C:\Users\jtill\.codex\worktrees\638b\capsule_tauri` | `codex/cap-context` | accepted `1d38cf1` plus root persistence corrections in `279e1cb`/`4272d53`; idle |
 | WP06 | `01a0a0e4-8c56-7431-ad98-2185e98d377f` | `C:\Users\jtill\.codex\worktrees\7b2c\cap` | `codex/cap-reads` | accepted `8d1d469` as `6d045b2`; core `6e7f792` + `0066097` |
 | WP09 | `01a0a120-56cf-7de0-9d0e-907556af4f99` | `C:\Users\jtill\.codex\worktrees\0135\cap` | `codex/cap-memories` | accepted `94915c6`; core integrated in `4888a2a` |
-| WP05 | `01a0a126-0c9c-7ab3-9685-4268e34fc1f9` | `C:\Users\jtill\.codex\worktrees\46e3\cap` | `codex/cap-capture-cli` | accepted `e91f901` + `7d8192a`; root motion review active |
-| WP10 | `01a0a127-151c-7b80-9134-33a63e426279` | `C:\Users\jtill\.codex\worktrees\ac36\capsule_tauri` | `codex/cap-external-refresh` | integrated `7c0c9e4` + `0972289`; scroll follow-up active |
+| WP05 | `01a0a126-0c9c-7ab3-9685-4268e34fc1f9` | `C:\Users\jtill\.codex\worktrees\46e3\cap` | `codex/cap-capture-cli` | accepted `e91f901` + `7d8192a`; root motion complete |
+| WP10 | `01a0a127-151c-7b80-9134-33a63e426279` | `C:\Users\jtill\.codex\worktrees\ac36\capsule_tauri` | `codex/cap-external-refresh` | reviewed through `e8357f0`; preserved on branch, excluded from CLI delivery |
+| WP08 | `01a0a172-c0a1-7800-9252-96aa2b9b6b4f` | `C:\Users\jtill\.codex\worktrees\b988\cap` | `codex/cap-writer` | accepted `ee2ff6a`; root routing, recovery and viewport corrections integrated |
+| WP11 | `01a0a168-3923-73d1-b823-ad6c90db4596` | `C:\Users\jtill\.codex\worktrees\b3cd\cap` | `codex/cap-delivery` | accepted `7740f42`, `1d06b8e`, `b1eaf90`; final CLI packaging in progress |
 
 Every worker uses `gpt-5.6-luna` with `max` reasoning. Owned files and dependencies
 are specified in PLAN.md and each task brief. WP02/WP03 communicate directly about
@@ -87,29 +91,29 @@ Accepted evidence:
   corrected publication, and passed 30 strengthened repetitions, all seven
   preference tests and personality process checks. See [state-file evidence](evidence/windows-state.md).
 
-The memory package may begin from the accepted read/presentation APIs while
-capture corrections finish. This scheduling overlap does not waive any R1/R2
-release gate. Capture remains disabled in the executable until its write and
-context APIs pass combined acceptance.
+Current integrated verification: 97 cap unit tests, all workspace integration
+suites, 27 effect unit tests and two pinned-source reference tests pass. Strict
+Clippy passes for all targets/features; all 15 synthetic capture fault-hook checks
+pass. Normal release packaging disables those hooks. The shared core passed 111
+tests; the optional desktop branch passed 80 Rust tests (one live provider test
+ignored), 62 frontend tests, build and lint. Required desktop cargo clean completed.
 
-WP10 implementation also overlaps the CLI work now that the shared core and
-desktop regression tests pass. Native R1 interoperability remains a release gate;
-this scheduling adjustment neither waives it nor substitutes mock UI evidence.
+Writer console checks verified Unicode/newlines, bracketed multiline paste,
+Ctrl+S save, Ctrl+C draft retention/exit 130, explicit resume, external editor and
+console-mode restoration. Root review corrected premature editor-temp cleanup,
+final-edit retention, mutable submitted drafts, long-line scrolling and ambient
+body redraw. See [writer evidence](evidence/writer.md).
 
-Capture/recovery and memory candidates are now integrated: cap `e91f901` and
-`7d8192a`, memory `94915c6`, shared core `4888a2a`. Combined verification passes
-111 core tests, 80 desktop tests (one live provider test ignored), 54 frontend
-tests, and the cap workspace including seven independent capture acceptance
-checks. Test-hook process checks pass 15 scenarios. These use synthetic data.
+Windows delivery passes 11 focused lifecycle cases under both PowerShell engines;
+late install failures preserve original binary/receipt/metadata/PATH, and a locked
+uninstall fails before removing PATH. Package stamps bind the executable hash to
+source/core/version/features and reject stale or tampered SkipBuild inputs.
 
-WP08 writer is next; WP11 delivery runs in task
-`01a0a168-3923-73d1-b823-ad6c90db4596`, worktree
-`C:\Users\jtill\.codex\worktrees\b3cd\cap`, branch `codex/cap-delivery`.
-WP10 follow-up targets actual scroll restoration and deferred selection.
-Root motion integration is complete in development: moving seal/weather,
-once-only milestone receipt, streaming unseal and drawn garden. A native console
-run found and verified fixes for memory width and scrollback redraw ownership;
-see [presentation evidence](evidence/presentation.md). WP08 is active in task
-`01a0a172-c0a1-7800-9252-96aa2b9b6b4f`, worktree
-`C:\Users\jtill\.codex\worktrees\b988\cap`, branch `codex/cap-writer`.
-Final writer/delivery integration, installation and native acceptance remain outstanding.
+G01–G06 and G12 have automated evidence; G08 final installed smoke is next. G10
+has measured development timings and bounded contention, without a controlled
+cold-cache claim. G11 has console and deterministic regression evidence; physical
+terminal resize/focus interactions are not independently recorded. G07 actual
+Windows Terminal visuals and G09 native desktop coexistence are unverified because
+the desktop was locked. G13/WP10 is excluded from delivery after the user's
+clarification. No production journal write, desktop install/update, public release
+or release tag was performed.
