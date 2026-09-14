@@ -27,6 +27,8 @@ cap add --json --capture-id walk-2026-09-14 -- 'A caller-retryable note'
 cap status --capture-id walk-2026-09-14
 cap recover list
 cap recover retry walk-2026-09-14
+cap write                 # interactive draft-backed writer (TTY)
+cap write --editor        # configured executable/argument-array editor
 cap enrich <entry-uuid>
 cap --db .\capsule.db recent
 cap --db .\capsule.db search 'tag:work after:2026-01-01'
@@ -58,6 +60,16 @@ legacy IDs or create backups/cache files. Capture uses one immediate saved UUID,
 optional post-commit context, a 15-minute weather cache and a 30-day receipt
 retention window; `--dry-run` performs no backup, mutation, context or cache
 work, and `--no-context` skips provider/cache work entirely.
+`cap write` is TTY-only (machine and redirected invocations fail clearly), keeps
+multiline Unicode edits in cap-local recovery records after 500 ms idle and on
+Ctrl+C, and asks explicitly whether to resume or discard a draft on the next
+launch. Ctrl+S clears the editable marker before handing the frozen request to
+the shared capture path; a saved draft cannot be published twice. `--editor`
+passes the configured executable and argument array directly, expands `{file}`
+as one argument, and accepts only successful, nonempty UTF-8 output. Draft
+status shows the frozen Capsule database destination and word target. Native
+Windows Terminal interaction remains a required manual release gate; unit tests
+cover the deterministic buffer/state/editor contracts only.
 Tests use synthetic temporary databases; the live journal is not a test fixture.
 The WP09 memory handlers add read-only `recall`, `on-this-day`, `calendar`,
 `stats`, and `garden` projections. They use shared Capsule metrics, local

@@ -34,6 +34,35 @@ pub enum RecoveryState {
     Committed,
 }
 
+/// Metadata that marks a pending request as an editable interactive-writer
+/// draft.  The request body, identity, timestamp and reserved UUID remain in
+/// the normal [`RecoveryRecord`]; this marker only tells the writer that it is
+/// safe to resume editing.  A submitted request clears the marker before the
+/// capture helper is invoked, so a saved/unknown/committed request can never be
+/// reopened as mutable text.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct WriterDraftMetadata {
+    pub version: u32,
+    pub kind: String,
+}
+
+impl WriterDraftMetadata {
+    pub const VERSION: u32 = 1;
+    pub const KIND: &'static str = "editable";
+
+    pub fn editable() -> Self {
+        Self {
+            version: Self::VERSION,
+            kind: Self::KIND.to_owned(),
+        }
+    }
+
+    pub fn is_editable(&self) -> bool {
+        self.version == Self::VERSION && self.kind == Self::KIND
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RecoveryRecord {
@@ -54,6 +83,11 @@ pub struct RecoveryRecord {
     pub updated_at: DateTime<Utc>,
     pub expires_at: Option<DateTime<Utc>>,
     pub last_error: Option<String>,
+    /// Present only for an unsent interactive-writer draft.  This remains in
+    /// the existing pending record rather than introducing a second journal
+    /// or body format.
+    #[serde(default)]
+    pub writer_draft: Option<WriterDraftMetadata>,
 }
 
 impl RecoveryRecord {
@@ -81,7 +115,16 @@ impl RecoveryRecord {
             updated_at: now,
             expires_at: None,
             last_error: None,
+            writer_draft: None,
         }
+    }
+
+    pub fn is_editable_writer_draft(&self) -> bool {
+        self.state == RecoveryState::Pending
+            && self
+                .writer_draft
+                .as_ref()
+                .is_some_and(WriterDraftMetadata::is_editable)
     }
 
     pub fn mark_unknown(&mut self, error: impl Into<String>) {
@@ -98,6 +141,7 @@ impl RecoveryRecord {
         self.reserved_uuid = receipt.uuid.clone();
         self.receipt = Some(receipt);
         self.request = None;
+        self.writer_draft = None;
         self.last_error = None;
         self.updated_at = Utc::now();
         self.expires_at = Some(self.updated_at + chrono::Duration::days(RECEIPT_RETENTION_DAYS));
@@ -682,6 +726,53 @@ mod tests {
         assert!(loaded.request.is_none());
         assert_eq!(loaded.receipt.unwrap().uuid, "entry_reserved");
         assert!(store.read_binding("cap/one").unwrap().is_some());
+    }
+
+    #[test]
+    fn writer_draft_marker_round_trips_and_is_cleared_on_commit() {
+        let directory = tempfile::tempdir().unwrap();
+        let store = StateStore::at_dir(directory.path());
+        let request = request();
+        let fingerprint = request_fingerprint(&request).unwrap();
+        let mut record = RecoveryRecord::pending(request, fingerprint, false);
+        record.writer_draft = Some(WriterDraftMetadata::editable());
+        assert!(record.is_editable_writer_draft());
+        store.write_pending(&record).unwrap();
+        let loaded = store.read_pending("cap/one").unwrap().unwrap();
+        assert_eq!(loaded.writer_draft, Some(WriterDraftMetadata::editable()));
+
+        record.mark_committed(CommitReceipt::committed(
+            "entry_reserved",
+            "cap/one",
+            Utc::now(),
+        ));
+        assert!(record.writer_draft.is_none());
+        assert!(!record.is_editable_writer_draft());
+    }
+
+    #[test]
+    fn legacy_records_without_writer_metadata_remain_readable() {
+        let value = serde_json::json!({
+            "version": 1,
+            "captureId": "cap/one",
+            "reservedUuid": "entry_reserved",
+            "request": null,
+            "requestFingerprint": "sha256-test",
+            "databasePath": "C:\\lab\\capsule.db",
+            "databaseIdentity": null,
+            "entryCreatedAt": "2026-09-14T12:00:00+01:00",
+            "wordCount": 0,
+            "state": "committed",
+            "receipt": null,
+            "context": null,
+            "explicitCaptureId": false,
+            "createdAt": "2026-09-14T11:00:00Z",
+            "updatedAt": "2026-09-14T11:00:00Z",
+            "expiresAt": null,
+            "lastError": null
+        });
+        let record: RecoveryRecord = serde_json::from_value(value).unwrap();
+        assert!(record.writer_draft.is_none());
     }
 
     #[test]

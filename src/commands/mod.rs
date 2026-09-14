@@ -19,3 +19,4 @@ pub mod status;
 pub mod tags;
 pub mod theme;
 pub mod today;
+pub mod write;
