@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0-dev.11] - 2026-09-14
+
+### Added
+
+- Process-level capture benchmark using newly generated synthetic journals,
+  persisted-row checks, bounded execution and first-output/total latency reports.
+
 ## [0.2.0-dev.10] - 2026-09-14
 
 ### Fixed

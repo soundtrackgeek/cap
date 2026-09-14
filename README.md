@@ -49,3 +49,10 @@ restoration. The example text is synthetic and is never saved.
 Native verification labs can be generated with `cargo run --example fixture_lab
 --locked -- 5`. These are new synthetic databases in the OS temp directory; see
 [native lab guidance](docs/evidence/native-lab.md) for the isolated launch contract.
+
+Once capture is integrated, build development measurement tools with
+`cargo build --release --examples --locked`, then run
+`target\release\examples\benchmark_capture.exe target\release\cap.exe
+target\release\examples\fixture_lab.exe`. It creates fresh synthetic journals,
+checks each saved row, and reports first-output and total p50/p95 latency as JSON.
+It does not accept an existing journal path or claim to measure a cold disk cache.
