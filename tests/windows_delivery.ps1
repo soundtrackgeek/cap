@@ -43,6 +43,7 @@ $tempRoot = [IO.Path]::GetFullPath((Join-Path ([IO.Path]::GetTempPath()) ("cap-d
 $marker = Join-Path $tempRoot '.cap-delivery-tests-owned'
 [IO.File]::WriteAllText($marker, '')
 $holderStream = $null
+$receiptHolderStream = $null
 try {
     $sourceDirectory = Join-Path $tempRoot 'source with spaces'
     [IO.Directory]::CreateDirectory($sourceDirectory) | Out-Null
@@ -79,10 +80,55 @@ try {
     Assert-Condition ((Get-Sha256 $destination) -eq $secondHash) 'updated binary hash differs'
     Assert-Condition ([IO.File]::ReadAllText($pathState) -eq ($originalPath + ';' + ([IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($destination))))) 'repeated install duplicated or rewrote PATH'
 
+    $receiptPath = Join-Path $installRoot '.cap-install.json'
+    $receiptBeforeBlockedInstall = [Convert]::ToBase64String([IO.File]::ReadAllBytes($receiptPath))
+    $destinationBeforeBlockedInstall = Get-Sha256 $destination
+    $pathBeforeBlockedInstall = [IO.File]::ReadAllText($pathState)
+    $receiptHolderStream = [IO.File]::Open($receiptPath, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::None)
+    $thirdSourceBytes = [Text.Encoding]::UTF8.GetBytes('cap-test-receipt-lock-failure')
+    [IO.File]::WriteAllBytes($source, $thirdSourceBytes)
+    $thirdHash = Get-Sha256 $source
+    [IO.File]::WriteAllText($checksum, "$thirdHash  cap.exe`n", [Text.UTF8Encoding]::new($false))
+    Expect-Failure { & $installScript -SourcePath $source -ChecksumPath $checksum -InstallRoot $installRoot -PathStatePath $pathState } 'locked receipt install was accepted'
+    $receiptHolderStream.Dispose()
+    $receiptHolderStream = $null
+    Assert-Condition ((Get-Sha256 $destination) -eq $destinationBeforeBlockedInstall) 'locked receipt install changed the binary'
+    Assert-Condition ([Convert]::ToBase64String([IO.File]::ReadAllBytes($receiptPath)) -eq $receiptBeforeBlockedInstall) 'locked receipt install changed receipt bytes'
+    Assert-Condition ([IO.File]::ReadAllText($pathState) -eq $pathBeforeBlockedInstall) 'locked receipt install changed PATH state'
+
     [IO.File]::WriteAllText($checksum, ('0' * 64) + "  cap.exe`n", [Text.UTF8Encoding]::new($false))
     Expect-Failure { & $installScript -SourcePath $source -ChecksumPath $checksum -InstallRoot (Join-Path $tempRoot 'checksum-failure\cap') -PathStatePath $pathState } 'checksum mismatch was accepted'
     Assert-Condition (-not (Test-Path -LiteralPath (Join-Path $tempRoot 'checksum-failure\cap\bin\cap.exe'))) 'checksum failure left an executable behind'
-    [IO.File]::WriteAllText($checksum, "$secondHash  cap.exe`n", [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText($checksum, "$thirdHash  cap.exe`n", [Text.UTF8Encoding]::new($false))
+
+    $metadataPackage = Join-Path $tempRoot 'metadata collision package'
+    [IO.Directory]::CreateDirectory($metadataPackage) | Out-Null
+    $metadataSource = Join-Path $metadataPackage 'cap.exe'
+    [IO.File]::WriteAllBytes($metadataSource, [Text.Encoding]::UTF8.GetBytes('cap-metadata-collision'))
+    $metadataHash = Get-Sha256 $metadataSource
+    [IO.File]::WriteAllText((Join-Path $metadataPackage 'checksums.sha256'), "$metadataHash  cap.exe`n", [Text.UTF8Encoding]::new($false))
+    [IO.File]::WriteAllText((Join-Path $metadataPackage 'manifest.json'), '{"package":"owned-by-test"}', [Text.UTF8Encoding]::new($false))
+    $metadataRoot = Join-Path $tempRoot 'metadata collision\cap'
+    [IO.Directory]::CreateDirectory($metadataRoot) | Out-Null
+    $metadataTarget = Join-Path $metadataRoot 'manifest.json'
+    [IO.File]::WriteAllText($metadataTarget, 'unrelated metadata must survive', [Text.UTF8Encoding]::new($false))
+    $metadataBefore = [IO.File]::ReadAllText($metadataTarget)
+    $metadataPathBefore = [IO.File]::ReadAllText($pathState)
+    Expect-Failure { & $installScript -SourcePath $metadataSource -PackageRoot $metadataPackage -InstallRoot $metadataRoot -PathStatePath $pathState } 'unrelated metadata collision was accepted'
+    Assert-Condition ([IO.File]::ReadAllText($metadataTarget) -eq $metadataBefore) 'metadata collision changed unrelated content'
+    Assert-Condition (-not (Test-Path -LiteralPath (Join-Path $metadataRoot 'bin\cap.exe'))) 'metadata collision left an executable behind'
+    Assert-Condition (-not (Test-Path -LiteralPath (Join-Path $metadataRoot '.cap-install.json'))) 'metadata collision left a receipt behind'
+    Assert-Condition ([IO.File]::ReadAllText($pathState) -eq $metadataPathBefore) 'metadata collision changed PATH state'
+
+    $completionFailureRoot = Join-Path $tempRoot 'completion profile failure\cap'
+    $completionProfileDirectory = Join-Path $tempRoot 'completion profile failure\profile directory'
+    [IO.Directory]::CreateDirectory($completionProfileDirectory) | Out-Null
+    $completionPathBefore = [IO.File]::ReadAllText($pathState)
+    Expect-Failure { & $installScript -SourcePath $source -ChecksumPath $checksum -InstallRoot $completionFailureRoot -PathStatePath $pathState -ActivateCompletions -CompletionProfilePath $completionProfileDirectory } 'completion profile directory failure was accepted'
+    Assert-Condition (-not (Test-Path -LiteralPath (Join-Path $completionFailureRoot 'bin\cap.exe'))) 'completion profile failure left an executable behind'
+    Assert-Condition (-not (Test-Path -LiteralPath (Join-Path $completionFailureRoot '.cap-install.json'))) 'completion profile failure left a receipt behind'
+    Assert-Condition ([IO.File]::ReadAllText($pathState) -eq $completionPathBefore) 'completion profile failure changed PATH state'
+    Assert-Condition (Test-Path -LiteralPath $completionProfileDirectory -PathType Container) 'completion profile failure removed the profile directory'
 
     $collisionRoot = Join-Path $tempRoot 'collision\cap'
     [IO.Directory]::CreateDirectory((Join-Path $collisionRoot 'bin')) | Out-Null
@@ -92,10 +138,22 @@ try {
     $lockedHash = Get-Sha256 $destination
     $holderStream = [IO.File]::Open($destination, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::None)
     [IO.File]::WriteAllBytes($source, [Text.Encoding]::UTF8.GetBytes('cap-test-lock-failure'))
+    $lockSourceHash = Get-Sha256 $source
+    [IO.File]::WriteAllText($checksum, "$lockSourceHash  cap.exe`n", [Text.UTF8Encoding]::new($false))
     Expect-Failure { & $installScript -SourcePath $source -InstallRoot $installRoot -PathStatePath $pathState } 'in-use binary replacement was accepted'
     $holderStream.Dispose()
     $holderStream = $null
     Assert-Condition ((Get-Sha256 $destination) -eq $lockedHash) 'failed replacement changed the installed binary'
+
+    $lockedUninstallPath = [IO.File]::ReadAllText($pathState)
+    $lockedUninstallReceipt = [Convert]::ToBase64String([IO.File]::ReadAllBytes($receiptPath))
+    $holderStream = [IO.File]::Open($destination, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::None)
+    Expect-Failure { & $uninstallScript -InstallRoot $installRoot -PathStatePath $pathState } 'locked uninstall was accepted'
+    $holderStream.Dispose()
+    $holderStream = $null
+    Assert-Condition (Test-Path -LiteralPath $destination -PathType Leaf) 'locked uninstall removed the binary'
+    Assert-Condition ([IO.File]::ReadAllText($pathState) -eq $lockedUninstallPath) 'locked uninstall changed PATH state'
+    Assert-Condition ([Convert]::ToBase64String([IO.File]::ReadAllBytes($receiptPath)) -eq $lockedUninstallReceipt) 'locked uninstall changed receipt bytes'
 
     $uninstall = & $uninstallScript -InstallRoot $installRoot -PathStatePath $pathState -PassThru | ConvertFrom-Json
     Assert-Condition ($uninstall.ok -eq $true -and $uninstall.action -eq 'uninstalled') 'uninstall did not succeed'
@@ -103,10 +161,11 @@ try {
     Assert-Condition ([IO.File]::ReadAllText($pathState) -eq $originalPath) 'uninstall did not restore the exact PATH text'
     Assert-Condition (Test-Path -LiteralPath (Join-Path $journalSentinel 'capsule.db')) 'uninstall touched journal/recovery/settings data'
 
-    [pscustomobject]@{ ok = $true; cases = @('spaces', 'checksum', 'collision', 'running-binary', 'path-preservation', 'uninstall-data-safety') } | ConvertTo-Json -Depth 4
+    [pscustomobject]@{ ok = $true; cases = @('spaces', 'checksum', 'receipt-lock-rollback', 'metadata-collision', 'completion-profile-failure', 'collision', 'running-binary', 'locked-uninstall', 'path-preservation', 'uninstall-data-safety') } | ConvertTo-Json -Depth 4
 }
 finally {
     if ($null -ne $holderStream) { $holderStream.Dispose() }
+    if ($null -ne $receiptHolderStream) { $receiptHolderStream.Dispose() }
     if (-not $KeepArtifacts) {
         if (-not (Test-Path -LiteralPath $marker -PathType Leaf)) { throw "Refusing to remove unmarked test root: $tempRoot" }
         Remove-Item -LiteralPath $tempRoot -Recurse -Force

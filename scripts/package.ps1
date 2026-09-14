@@ -123,11 +123,51 @@ if ($LASTEXITCODE -ne 0 -or $gitRevision -notmatch '^[0-9a-fA-F]{40}$') { throw 
 if (-not [string]::IsNullOrWhiteSpace($SourceRevision) -and $gitRevision -ine $SourceRevision) {
     throw "Source revision mismatch. Expected $SourceRevision, found $gitRevision."
 }
-if (-not $AllowDirty) {
-    $dirty = @(& git -C $repoRoot status --porcelain --untracked-files=all)
-    if ($dirty.Count -gt 0) {
-        throw 'Release packaging requires a clean checkout. Pass -AllowDirty only for an explicitly local development archive.'
+
+function Get-StringSha256 {
+    param([AllowEmptyString()] [string]$Value)
+
+    $algorithm = [Security.Cryptography.SHA256]::Create()
+    try {
+        $bytes = [Text.UTF8Encoding]::new($false).GetBytes($Value)
+        return ([BitConverter]::ToString($algorithm.ComputeHash($bytes))).Replace('-', '').ToLowerInvariant()
     }
+    finally {
+        $algorithm.Dispose()
+    }
+}
+
+function Publish-TextFile {
+    param(
+        [Parameter(Mandatory = $true)] [string]$Destination,
+        [Parameter(Mandatory = $true)] [AllowEmptyString()] [string]$Content
+    )
+
+    $parent = [IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($Destination))
+    if (-not (Test-Path -LiteralPath $parent -PathType Container)) { [IO.Directory]::CreateDirectory($parent) | Out-Null }
+    $temporary = "$Destination.tmp.$([guid]::NewGuid().ToString('N'))"
+    [IO.File]::WriteAllText($temporary, $Content, [Text.UTF8Encoding]::new($false))
+    try {
+        if (Test-Path -LiteralPath $Destination -PathType Leaf) {
+            $backup = "$Destination.previous.$([guid]::NewGuid().ToString('N'))"
+            [IO.File]::Replace($temporary, $Destination, $backup, $true)
+            if (Test-Path -LiteralPath $backup -PathType Leaf) { Remove-Item -LiteralPath $backup -Force }
+        }
+        else {
+            [IO.File]::Move($temporary, $Destination)
+        }
+    }
+    finally {
+        if (Test-Path -LiteralPath $temporary -PathType Leaf) { Remove-Item -LiteralPath $temporary -Force -ErrorAction SilentlyContinue }
+    }
+}
+$dirtyLines = @(& git -C $repoRoot status --porcelain --untracked-files=all)
+if ($LASTEXITCODE -ne 0) { throw 'Unable to inspect the package checkout status.' }
+$dirtyState = [string]::Join("`n", @($dirtyLines | ForEach-Object { [string]$_ }))
+$dirtyFingerprint = Get-StringSha256 $dirtyState
+$isDirty = $dirtyLines.Count -gt 0
+if ($isDirty -and -not $AllowDirty) {
+    throw 'Release packaging requires a clean checkout. Pass -AllowDirty only for an explicitly local development archive.'
 }
 
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) { $OutputDirectory = Join-Path $repoRoot 'dist' }
@@ -142,6 +182,7 @@ if (((Test-Path -LiteralPath $archivePath -PathType Leaf) -or (Test-Path -Litera
 
 $targetRoot = Join-Path $repoRoot 'target\delivery'
 $binaryPath = Join-Path $targetRoot 'release\cap.exe'
+$provenancePath = Join-Path $targetRoot 'cap-build-provenance.json'
 $oldTargetDirectory = $env:CARGO_TARGET_DIR
 try {
     if (-not $SkipBuild) {
@@ -150,6 +191,46 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "cargo build --release --locked failed with exit code $LASTEXITCODE" }
     }
     $binaryPath = ConvertTo-AbsolutePath $binaryPath -MustExist
+    $binaryHash = Get-Sha256 $binaryPath
+    $expectedProvenance = [ordered]@{
+        schemaVersion = 1
+        binaryPath = (Get-PathKey $binaryPath)
+        binarySha256 = $binaryHash
+        sourceRevision = $gitRevision.ToLowerInvariant()
+        capsuleCoreRevision = $coreRevision
+        version = $version
+        platform = $Platform
+        profile = 'release'
+        featureSet = 'default'
+        command = 'cargo build --release --locked'
+        dirty = $isDirty
+        dirtyFingerprint = $dirtyFingerprint
+        builtAtUtc = (Get-Date).ToUniversalTime().ToString('o')
+    }
+    if ($SkipBuild) {
+        if (-not (Test-Path -LiteralPath $provenancePath -PathType Leaf)) {
+            throw "-SkipBuild requires a successful package provenance stamp: $provenancePath"
+        }
+        try { $provenance = Get-Content -LiteralPath $provenancePath -Raw | ConvertFrom-Json }
+        catch { throw "The package provenance stamp is unreadable: $provenancePath" }
+        foreach ($field in @('schemaVersion', 'binaryPath', 'binarySha256', 'sourceRevision', 'capsuleCoreRevision', 'version', 'platform', 'profile', 'featureSet', 'command', 'dirty', 'dirtyFingerprint', 'builtAtUtc')) {
+            if ($null -eq $provenance.PSObject.Properties[$field]) { throw "The package provenance stamp is missing '$field': $provenancePath" }
+        }
+        if ([int]$provenance.schemaVersion -ne 1 -or
+            (Get-PathKey ([string]$provenance.binaryPath)) -ine (Get-PathKey $binaryPath) -or
+            [string]$provenance.binarySha256 -ine $binaryHash -or
+            [string]$provenance.sourceRevision -ine $gitRevision -or
+            [string]$provenance.capsuleCoreRevision -ine $coreRevision -or
+            [string]$provenance.version -ine $version -or
+            [string]$provenance.platform -ine $Platform -or
+            [string]$provenance.profile -ine 'release' -or
+            [string]$provenance.featureSet -ine 'default' -or
+            [string]$provenance.command -ine 'cargo build --release --locked' -or
+            [bool]$provenance.dirty -ne $isDirty -or
+            [string]$provenance.dirtyFingerprint -ine $dirtyFingerprint) {
+            throw "The existing package provenance stamp does not match this source, build, or checkout state: $provenancePath"
+        }
+    }
 
     $tempRoot = Get-PathKey (Join-Path ([IO.Path]::GetTempPath()) ("cap-package-" + [guid]::NewGuid().ToString('N')))
     $staging = Join-Path $tempRoot $archiveName
@@ -196,6 +277,8 @@ statement of public-release permission for upstream material.
             sourceRevision = $gitRevision.ToLowerInvariant()
             capsuleCoreRevision = $coreRevision
             builtAtUtc = (Get-Date).ToUniversalTime().ToString('o')
+            dirty = $isDirty
+            dirtyFingerprint = $dirtyFingerprint
             payload = @($payload)
             licenseStatus = 'color-cli upstream snapshot has no inspected license declaration; permission remains unresolved'
         }
@@ -206,6 +289,9 @@ statement of public-release permission for upstream material.
         Compress-Archive -LiteralPath $staging -DestinationPath $archivePath -CompressionLevel Optimal -Force
         $archiveHash = Get-Sha256 $archivePath
         [IO.File]::WriteAllText($archiveHashPath, "$archiveHash  $([IO.Path]::GetFileName($archivePath))$([Environment]::NewLine)", [Text.UTF8Encoding]::new($false))
+        if (-not $SkipBuild) {
+            Publish-TextFile -Destination $provenancePath -Content (($expectedProvenance | ConvertTo-Json -Depth 8) + [Environment]::NewLine)
+        }
 
         $result = [pscustomobject]@{
             ok = $true
@@ -216,6 +302,8 @@ statement of public-release permission for upstream material.
             capsuleCoreRevision = $coreRevision
             version = $version
             platform = $Platform
+            binarySha256 = $binaryHash
+            dirty = $isDirty
             staging = if ($KeepStaging) { (Get-PathKey $staging) } else { $null }
         }
         if ($PassThru) { $result | ConvertTo-Json -Depth 8 } else {

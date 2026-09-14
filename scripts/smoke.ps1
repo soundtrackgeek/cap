@@ -67,23 +67,41 @@ function Invoke-FreshPowerShell {
     $start.RedirectStandardOutput = $true
     $start.RedirectStandardError = $true
 
-    $existingNames = @($start.EnvironmentVariables.Keys)
-    foreach ($name in $existingNames) {
-        if ([string]$name -match '^(?i:CAPSULE_|CAP_|APPDATA$|LOCALAPPDATA$|USERPROFILE$|HOME$|TEMP$|TMP$|XDG_)') {
-            [void]$start.EnvironmentVariables.Remove([string]$name)
-        }
+    $systemEnvironment = @{}
+    foreach ($name in @('SYSTEMROOT', 'WINDIR', 'PATHEXT')) {
+        $value = [Environment]::GetEnvironmentVariable($name, 'Process')
+        if (-not [string]::IsNullOrWhiteSpace($value)) { $systemEnvironment[$name] = [string]$value }
+    }
+    $start.EnvironmentVariables.Clear()
+    foreach ($entry in $systemEnvironment.GetEnumerator()) {
+        $start.EnvironmentVariables[[string]$entry.Key] = [string]$entry.Value
     }
     foreach ($entry in $Environment.GetEnumerator()) {
         $start.EnvironmentVariables[[string]$entry.Key] = [string]$entry.Value
     }
 
     $process = [Diagnostics.Process]::new()
-    $process.StartInfo = $start
-    if (-not $process.Start()) { throw "Unable to start fresh PowerShell: $shell" }
-    $stdout = $process.StandardOutput.ReadToEnd()
-    $stderr = $process.StandardError.ReadToEnd()
-    $process.WaitForExit()
-    return [pscustomobject]@{ ExitCode = $process.ExitCode; Stdout = $stdout; Stderr = $stderr }
+    try {
+        $process.StartInfo = $start
+        if (-not $process.Start()) { throw "Unable to start fresh PowerShell: $shell" }
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+        $timeoutMilliseconds = 120000
+        if (-not $process.WaitForExit($timeoutMilliseconds)) {
+            try { $process.Kill() } catch { }
+            try { [void]$process.WaitForExit(5000) } catch { }
+            $stdout = if ($stdoutTask.IsCompleted) { $stdoutTask.Result } else { '<stdout unavailable after timeout>' }
+            $stderr = if ($stderrTask.IsCompleted) { $stderrTask.Result } else { '<stderr unavailable after timeout>' }
+            throw "Fresh PowerShell timed out after $timeoutMilliseconds ms.`nSTDOUT:`n$stdout`nSTDERR:`n$stderr"
+        }
+        $process.WaitForExit()
+        $stdout = $stdoutTask.Result
+        $stderr = $stderrTask.Result
+        return [pscustomobject]@{ ExitCode = $process.ExitCode; Stdout = $stdout; Stderr = $stderr }
+    }
+    finally {
+        $process.Dispose()
+    }
 }
 
 function Invoke-IsolatedCap {

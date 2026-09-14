@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.0-dev.25 - 2026-09-14
+
+### Fixed
+
+- Made Windows install/uninstall mutations preflight and recoverable across
+  binary, metadata, receipt, profile and PATH destinations, with deterministic
+  locked-destination coverage.
+- Bound `-SkipBuild` packaging to a successful release provenance stamp and
+  recorded explicit dirty-checkout state in package manifests.
+- Isolated smoke child processes to a minimal environment with asynchronous
+  output capture and a bounded timeout.
+
 ## 0.2.0-dev.24 - 2026-09-14
 
 ### Added
