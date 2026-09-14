@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.0-dev.3] - 2026-09-14
+
+### Added
+
+- Bounded Capsule fixture matrix covering full and optional-table schemas,
+  FTS5/legacy/absent search tables, ID edge cases, relations and persisted
+  location/weather records.
+- Strict temporary-path ownership checks, cleared subprocess environments,
+  deterministic seeded clocks, disposable SQLite lock guards and logical
+  schema/row snapshots for read-only proof.
+- Fixture-matrix evidence and focused verification command documentation.
+
 ## [0.2.0-dev.1] - 2026-09-14
 
 ### Added
