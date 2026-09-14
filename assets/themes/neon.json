@@ -1,0 +1,7 @@
+{
+  "name": "neon",
+  "description": "electric neon with a rainbow sweep",
+  "palette": "neon",
+  "gradient": "rainbow",
+  "border": { "top_left": "✦", "top_right": "✦", "bottom_left": "╰", "bottom_right": "╯", "horizontal": "━", "vertical": "┃" }
+}

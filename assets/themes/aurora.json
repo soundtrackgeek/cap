@@ -1,0 +1,7 @@
+{
+  "name": "aurora",
+  "description": "green, cyan and violet aurora",
+  "palette": "aurora",
+  "gradient": "text",
+  "border": { "top_left": "╭", "top_right": "╮", "bottom_left": "╰", "bottom_right": "╯", "horizontal": "─", "vertical": "│" }
+}

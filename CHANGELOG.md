@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.0-dev.6] - 2026-09-14
+
+### Added
+
+- Five cap-local terminal themes (`aurora`, `neon`, `c64`, `amber`, `paper`)
+  with fictional previews and ASCII/plain fallbacks.
+- Synthetic FX gallery for all eight source palettes and five gradient modes,
+  bounded through the shared `cap-effects` renderer with cancellation support.
+- Atomic, deny-listed cap-local preferences for output modes, writer display
+  and target, icon/preview policy, and editor executable/argument arrays.
+- Profile-free PowerShell completions with explicit opt-in read-only metadata
+  suggestions.
+
 ## [0.2.0-dev.5] - 2026-09-14
 
 ### Added
