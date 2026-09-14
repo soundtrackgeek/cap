@@ -120,10 +120,12 @@ checksum = "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04"
 
 [[package]]
 name = "cap"
-version = "0.2.0-dev.18"
+version = "0.2.0-dev.20"
 dependencies = [
+ "anyhow",
  "cap-effects",
  "capsule-core",
+ "chrono",
  "clap",
  "ctrlc",
  "rusqlite",
@@ -146,7 +148,7 @@ dependencies = [
 [[package]]
 name = "capsule-core"
 version = "0.1.0"
-source = "git+https://github.com/soundtrackgeek/capsule_tauri.git?rev=4272d53954b210227696b3e6ce0bac5d44c81caa#4272d53954b210227696b3e6ce0bac5d44c81caa"
+source = "git+https://github.com/soundtrackgeek/capsule_tauri.git?rev=8881d301cf15f0bb175f69acd0f0be8c6ba5fba8#8881d301cf15f0bb175f69acd0f0be8c6ba5fba8"
 dependencies = [
  "anyhow",
  "chrono",

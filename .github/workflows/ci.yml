@@ -28,6 +28,8 @@ jobs:
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - name: Test synthetic fixtures and commands
         run: cargo test --workspace --all-targets --locked
+      - name: Verify independent capture processes and crash recovery
+        run: cargo run --locked --example core_process_probe
       - name: Build standalone release CLI
         run: cargo build --release --locked
       - name: Verify machine version output

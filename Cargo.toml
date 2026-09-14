@@ -4,13 +4,13 @@ resolver = "2"
 
 [package]
 name = "cap"
-version = "0.2.0-dev.18"
+version = "0.2.0-dev.20"
 edition = "2021"
 rust-version = "1.95"
 description = "A small ceremony for everyday Capsule memories"
 
 [dependencies]
-capsule-core = { git = "https://github.com/soundtrackgeek/capsule_tauri.git", rev = "4272d53954b210227696b3e6ce0bac5d44c81caa" }
+capsule-core = { git = "https://github.com/soundtrackgeek/capsule_tauri.git", rev = "8881d301cf15f0bb175f69acd0f0be8c6ba5fba8" }
 cap-effects = { path = "crates/cap-effects" }
 clap = { version = "4", features = ["derive"] }
 ctrlc = "3.5"
@@ -18,5 +18,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
 [dev-dependencies]
+anyhow = "1"
+chrono = "0.4"
 rusqlite = { version = "0.37", features = ["backup", "bundled"] }
 tempfile = "3"

@@ -4,6 +4,11 @@ The development build now pins the reviewed shared capture and context core.
 CLI capture/recovery is the next integration package; it remains disabled until
 its durable local recovery and executable tests are connected.
 
+Run `cargo run --locked --example core_process_probe` for the isolated shared-core
+crash/concurrency check. It creates and removes its own temporary synthetic
+journals; it accepts no existing journal path. `-- --bench` measures the core
+on synthetic 1k/10k/100k-entry journals (three process samples per size).
+
 A command-line companion for [Capsule](https://github.com/soundtrackgeek/capsule_tauri), currently in development.
 Capture a journal entry from the terminal, using Capsule's active database,
 location settings and weather, with a little color-cli ceremony when it saves.

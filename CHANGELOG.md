@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0-dev.20 - 2026-09-14
+
+### Added
+
+- Repeatable independent-process core capture probe using owned synthetic labs,
+  kill checkpoints, concurrent writers and database integrity checks.
+
 ## 0.2.0-dev.18 - 2026-09-14
 
 ### Changed
