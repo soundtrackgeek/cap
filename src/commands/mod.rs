@@ -1,12 +1,17 @@
+pub mod calendar;
 pub mod completions;
 pub mod config;
 pub mod context;
 pub mod doctor;
 pub mod fx;
+pub mod garden;
 pub mod moods;
+pub mod on_this_day;
+pub mod recall;
 pub mod recent;
 pub mod search;
 pub mod show;
+pub mod stats;
 pub mod tags;
 pub mod theme;
 pub mod today;

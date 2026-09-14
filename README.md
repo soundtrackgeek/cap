@@ -37,6 +37,18 @@ by default, preserve structured-search fallback diagnostics, and never repair
 legacy IDs or create backups/cache files. Capture commands are connected only
 after their work packages pass review.
 Tests use synthetic temporary databases; the live journal is not a test fixture.
+The WP09 memory handlers add read-only `recall`, `on-this-day`, `calendar`,
+`stats`, and `garden` projections. They use shared Capsule metrics, local
+calendar dates, visible entries by default, and a cap-local state file for
+non-repeating recall and once-only daily/weekly glints. Garden tiers are
+0 bare, 1–49 seed, 50–199 sprout, 200–499 leaf, and 500+ bloom words; the
+daily and weekly glint thresholds are 50 and 500 words. These commands never
+write journal, XP, badge, or quest rows. Executable registration and
+capture-receipt wiring remain an integration step until the package is accepted.
+Human memory views also expose pure time-injected frames and guarded TTY
+streaming: the unseal cue is capped at 700ms, the seven-day garden grows in at
+400ms, and the calendar uses a static grid capped at 300ms. JSON, quiet, plain,
+redirected, reduced-motion, and narrow (40-column) output stay deterministic.
 The shared Capsule core is fetched from a reviewed Git revision recorded in
 Cargo.toml/Cargo.lock; a local Capsule or Python checkout is not needed to build.
 Preference updates use a flushed temporary file and same-directory replacement;

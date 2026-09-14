@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.2.0-dev.18] - 2026-09-14
+
+### Changed
+
+- Added guarded pure-frame streaming for memory unseal, garden, and calendar
+  views, with non-TTY/static and narrow-width safeguards.
+- Bounded recall/body projections and shared milestone/calendar integration now
+  preserve complete aggregate counts without buffering authored bodies.
+
+## [0.2.0-dev.17] - 2026-09-14
+
+### Added
+
+- Implemented read-only memory experiences for recall, on-this-day, calendar,
+  stats, and the seven-day writing garden, with synthetic date/visibility tests.
+- Added database-identity-bound atomic cap state for non-repeating recall and
+  true daily/weekly milestone crossing receipts (50/500 words) that fail as
+  warnings when optional state or metrics are unavailable.
+
 ## [0.2.0-dev.16] - 2026-09-14
 
 ### Added
