@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.2.0-dev.1] - 2026-09-14
+
+### Added
+
+- Rust workspace foundation, stable JSON envelope, effects crate boundary, and
+  isolated synthetic Capsule fixtures for the coordinated implementation.
+- Contract and implementation tracking documents. Capture remains unavailable
+  until the shared backend and recovery work is integrated.
+
 ## [0.1.0] - 2026-09-14
 
 ### Added
