@@ -25,11 +25,13 @@ jobs:
       - name: Check formatting
         run: cargo fmt --all --check
       - name: Check warnings
-        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+        run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
       - name: Test synthetic fixtures and commands
         run: cargo test --workspace --all-targets --locked
       - name: Verify independent capture processes and crash recovery
         run: cargo run --locked --example core_process_probe
+      - name: Verify CLI crash and recovery hooks on synthetic fixtures
+        run: cargo test --locked --features test-hooks --test capture_process
       - name: Build standalone release CLI
         run: cargo build --release --locked
       - name: Verify machine version output

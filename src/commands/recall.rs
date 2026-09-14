@@ -45,6 +45,7 @@ pub fn run_at_with_seed(
     seed: u64,
     global: &GlobalOptions,
 ) -> Result<CommandOutput, AppError> {
+    let presentation = crate::ui::memory::MemoryPresentation::resolve(global)?;
     let (reader, resolved) =
         query::open_reader(global).map_err(|error| AppError::new("DB_READ", error, 3))?;
     let seed_for_candidates = seed;
@@ -82,8 +83,18 @@ pub fn run_at_with_seed(
         "candidateCount": candidates.len(),
         "empty": selected.is_none(),
     });
-    let human = query::human_text(&unseal::format_recall(selected.as_ref()), global)
-        .map_err(|error| AppError::new("INVALID_CONFIG", error, 2))?;
+    let human = presentation.present(
+        |elapsed, width, config| {
+            unseal::recall_frame_with_icons(
+                selected.as_ref(),
+                width,
+                config,
+                elapsed,
+                presentation.ascii(),
+            )
+        },
+        std::time::Duration::from_millis(650),
+    )?;
     let mut output = CommandOutput::new(data, human);
     output.warnings = warnings;
     Ok(output)

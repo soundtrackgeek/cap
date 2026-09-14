@@ -52,6 +52,158 @@ fn saved(fixture: &Fixture, args: &[&str]) -> Value {
 }
 
 #[test]
+fn continuation_number_is_frozen_as_a_uuid_before_pending_storage() {
+    let fixture = Fixture::new();
+    let db = rusqlite::Connection::open(&fixture.db).unwrap();
+    let parent: String = db
+        .query_row("SELECT uuid FROM entries WHERE id=1", [], |row| row.get(0))
+        .unwrap();
+    drop(db);
+    let blocked = fixture.root.path().join("continuation-backup-file");
+    fs::write(&blocked, "synthetic blocker").unwrap();
+    envelope(
+        command(&fixture)
+            .env("CAPSULE_BACKUP_DIR", &blocked)
+            .args([
+                "--json",
+                "--no-context",
+                "add",
+                "--capture-id",
+                "continued-draft",
+                "--continue",
+                "1",
+                "Next chapter",
+            ])
+            .output()
+            .unwrap(),
+        5,
+    );
+    let pending = saved(&fixture, &["recover", "show", "continued-draft"]);
+    assert_eq!(pending["data"]["draft"]["continueFromUuid"], parent);
+    fs::remove_file(&blocked).unwrap();
+    fs::create_dir(&blocked).unwrap();
+    let retry = saved(&fixture, &["recover", "retry", "continued-draft"]);
+    assert_eq!(retry["data"]["saveState"], "committed");
+}
+
+#[test]
+fn real_save_crosses_daily_milestone_once_and_enrichment_never_duplicates_it() {
+    let fixture = Fixture::new();
+    // Move only our generated seed rows away from the real local test date.
+    let db = rusqlite::Connection::open(&fixture.db).unwrap();
+    db.execute(
+        "UPDATE entries SET created_at='2001' || substr(created_at, 5)",
+        [],
+    )
+    .unwrap();
+    drop(db);
+    let words = std::iter::repeat_n("harbor", 50)
+        .collect::<Vec<_>>()
+        .join(" ");
+    let result = saved(
+        &fixture,
+        &["add", "--capture-id", "daily-crossing", "--", &words],
+    );
+    let glints = result["data"]["milestones"]
+        .as_array()
+        .expect("actual threshold crossing");
+    assert!(glints
+        .iter()
+        .any(|glint| glint["kind"] == "daily_words" && glint["threshold"] == 50));
+    let retry = saved(
+        &fixture,
+        &["add", "--capture-id", "daily-crossing", "--", &words],
+    );
+    assert!(retry["data"].get("milestones").is_none());
+    assert_eq!(retry["data"]["entryUuid"], result["data"]["entryUuid"]);
+    let uuid = result["data"]["entryUuid"].as_str().unwrap();
+    let before = fixture.snapshot().unwrap();
+    let enriched = saved(&fixture, &["enrich", uuid]);
+    assert_eq!(enriched["data"]["entryUuid"], uuid);
+    assert_eq!(
+        before,
+        fixture.snapshot().unwrap(),
+        "no-context enrichment changed stored data"
+    );
+    let extra = saved(&fixture, &["add", "one more word"]);
+    assert!(extra["data"].get("milestones").is_none());
+}
+
+#[test]
+fn supported_legacy_ids_are_repaired_only_after_capture_backup() {
+    {
+        let profile = support::FixtureProfile::nullable_ids();
+        let fixture = Fixture::from_profile(profile);
+        let before = fixture.snapshot().unwrap();
+        let dry = saved(&fixture, &["--dry-run", "add", "A repaired capture"]);
+        assert_eq!(dry["data"]["dryRun"], true);
+        assert_eq!(before, fixture.snapshot().unwrap());
+        let result = saved(&fixture, &["add", "A repaired capture"]);
+        let backup_path = result["data"]["backup"]["path"]
+            .as_str()
+            .expect("verified backup");
+        let backup = rusqlite::Connection::open_with_flags(
+            backup_path,
+            rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
+        )
+        .unwrap();
+        assert_eq!(
+            backup
+                .query_row("SELECT COUNT(*) FROM entries", [], |row| row
+                    .get::<_, i64>(0))
+                .unwrap(),
+            5
+        );
+        assert!(
+            backup
+                .query_row(
+                    "SELECT COUNT(*) - COUNT(DISTINCT id) FROM entries",
+                    [],
+                    |row| row.get::<_, i64>(0)
+                )
+                .unwrap()
+                > 0,
+            "backup must preserve the original repair candidate"
+        );
+        let db = rusqlite::Connection::open(&fixture.db).unwrap();
+        assert_eq!(
+            db.query_row("SELECT COUNT(*) FROM entries", [], |row| row
+                .get::<_, i64>(0))
+                .unwrap(),
+            6
+        );
+        assert_eq!(
+            db.query_row(
+                "SELECT COUNT(*) - COUNT(DISTINCT id) FROM entries",
+                [],
+                |row| row.get::<_, i64>(0)
+            )
+            .unwrap(),
+            0
+        );
+    }
+    let fixture = Fixture::from_profile(support::FixtureProfile::duplicate_ids());
+    let before = fixture.snapshot().unwrap();
+    let failed = envelope(
+        command(&fixture)
+            .args([
+                "--json",
+                "--no-context",
+                "add",
+                "Ambiguous references must be refused",
+            ])
+            .output()
+            .unwrap(),
+        5,
+    );
+    assert!(failed["error"]["message"]
+        .as_str()
+        .unwrap()
+        .contains("duplicated"));
+    assert_eq!(before, fixture.snapshot().unwrap());
+}
+
+#[test]
 fn file_content_survives_exactly_and_display_controls_never_enter_storage() {
     let fixture = Fixture::new();
     let text = "  # Harbor\r\n\r\nCafé · 窓 · 👩🏽‍💻\rtrailing  \r\n";

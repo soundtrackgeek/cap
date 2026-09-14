@@ -4,6 +4,7 @@
 
 use rusqlite::Connection;
 use serde_json::{json, Value};
+use sha2::{Digest, Sha256};
 use std::{
     error::Error,
     io::{BufRead, BufReader, Read},
@@ -19,6 +20,12 @@ fn main() -> Result<(), Box<dyn Error>> {
         return Err("Usage: benchmark_capture <cap.exe> <fixture_lab.exe> [samples=20] [sizes=1000,10000,100000]".into());
     }
     let cap = PathBuf::from(&args[0]).canonicalize()?;
+    let executable_sha256 = format!("{:x}", Sha256::digest(std::fs::read(&cap)?));
+    let version = Command::new(&cap).args(["--json", "--version"]).output()?;
+    if !version.status.success() {
+        return Err("Could not identify the benchmark executable".into());
+    }
+    let cap_version: Value = serde_json::from_slice(&version.stdout)?;
     let generator = PathBuf::from(&args[1]).canonicalize()?;
     let samples = args
         .get(2)
@@ -133,7 +140,11 @@ fn main() -> Result<(), Box<dyn Error>> {
             if stdout.contains('\u{1b}') {
                 return Err("Plain benchmark output contained ANSI".into());
             }
-            timings.push(json!({"sample":index, "firstLineMs":first_line_ms, "totalMs":elapsed_ms, "warningCount":String::from_utf8_lossy(&stderr).lines().count()}));
+            let warnings = String::from_utf8_lossy(&stderr)
+                .lines()
+                .map(str::to_owned)
+                .collect::<Vec<_>>();
+            timings.push(json!({"sample":index, "firstLineMs":first_line_ms, "totalMs":elapsed_ms, "warningCount":warnings.len(), "warnings":warnings}));
         }
         let totals = timings
             .iter()
@@ -149,7 +160,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!(
         "{}",
         serde_json::to_string_pretty(
-            &json!({"schemaVersion":1,"synthetic":true,"capExecutable":cap,"measurement":"Fresh process per sample; first line is transport arrival, not an inferred SQLite commit time. Filesystem cache is not forcibly cold. No context or decoration.","reports":reports})
+            &json!({"schemaVersion":1,"synthetic":true,"capExecutable":cap,"executableSha256":executable_sha256,"capVersion":cap_version,"measurement":"Fresh process per sample; first line is transport arrival, not an inferred SQLite commit time. Filesystem cache is not forcibly cold. No context or decoration.","reports":reports})
         )?
     );
     Ok(())

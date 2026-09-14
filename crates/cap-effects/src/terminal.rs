@@ -535,7 +535,7 @@ pub fn animate_frames_with_cancel<
         output_color = ColorMode::Plain;
     }
     if mode.motion() != MotionMode::Full || !caps.is_tty {
-        let frame = frame_at_elapsed(end_seconds, caps.compact_width());
+        let frame = frame_at_elapsed(end_seconds, caps.width.saturating_sub(1).clamp(1, 120));
         writer.write_all(render_frame(&frame, output_color).as_bytes())?;
         writer.flush()?;
         return Ok(AnimationResult {
@@ -562,21 +562,25 @@ pub fn animate_frames_with_cancel<
         }
         let elapsed = started.elapsed();
         let elapsed_seconds = elapsed.as_secs_f64().min(end_seconds);
-        let current_width = terminal::size()
-            .map(|(columns, _)| usize::from(columns))
-            .unwrap_or(caps.width);
+        let (current_width, current_height) = terminal::size()
+            .map(|(columns, rows)| (usize::from(columns), usize::from(rows)))
+            .unwrap_or((caps.width, 24));
         if current_width != caps.width {
             resized = true;
         }
-        let layout_width = current_width
-            .saturating_sub(1)
-            .clamp(1, DEFAULT_LAYOUT_WIDTH);
+        let layout_width = current_width.saturating_sub(1).clamp(1, 120);
         let mut frame = if resized {
             frame_at_elapsed(end_seconds, layout_width)
         } else {
             frame_at_elapsed(elapsed_seconds, layout_width)
         };
         frame.resized = resized;
+        // Repainting more than one viewport would move into earlier scrollback.
+        // Finish once as ordinary output instead; long bodies are never redrawn.
+        if !frame.done && frame.rows.len() >= current_height.saturating_sub(1) {
+            frame = frame_at_elapsed(end_seconds, layout_width);
+            frame.done = true;
+        }
         write_redraw(guard.writer(), &frame, output_color, previous_rows)?;
         previous_rows = frame.rows.len();
         frames_rendered = frames_rendered.saturating_add(1);
@@ -714,7 +718,9 @@ fn write_redraw<W: Write>(
 ) -> io::Result<()> {
     if previous_rows > 0 {
         write!(writer, "\x1b[{}A", previous_rows)?;
-        let rows_to_clear = previous_rows.max(frame.rows.len());
+        // Only erase rows already owned by this animation. Clearing the future
+        // frame first can scroll the terminal and erase an earlier Saved line.
+        let rows_to_clear = previous_rows;
         for index in 0..rows_to_clear {
             writer.write_all(CLEAR_LINE)?;
             if index + 1 < rows_to_clear {
@@ -736,6 +742,20 @@ fn write_redraw<W: Write>(
 mod tests {
     use super::*;
     use std::cell::Cell;
+
+    #[test]
+    fn growing_final_frame_clears_only_previously_owned_rows() {
+        let config = EffectConfig::quick_save();
+        let frame = final_frame(&layout_text(&"body\n".repeat(100), 79, false), &config);
+        let mut output = Vec::new();
+        write_redraw(&mut output, &frame, ColorMode::Plain, 3).unwrap();
+        let output = String::from_utf8(output).unwrap();
+        let first_body = output.find("body").unwrap();
+        let prefix = &output[..first_body];
+        assert_eq!(prefix.matches("\x1b[2K").count(), 4); // three old + first new
+        assert!(prefix.contains("\x1b[3A"));
+        assert!(!prefix.contains("\x1b[99A"));
+    }
 
     #[test]
     fn output_precedence_and_static_fallback_are_strict() {

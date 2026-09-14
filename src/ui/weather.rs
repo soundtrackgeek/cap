@@ -105,6 +105,28 @@ fn format_observation(observation: &WeatherObservation) -> String {
     }
 }
 
+/// One changing atmospheric accent during the final 250ms of a save.
+/// Unknown/disabled weather has no animation or invented condition.
+pub fn weather_motion(condition: Option<&str>, status: &str, progress: f64, ascii: bool) -> String {
+    if !matches!(status, "captured" | "cached") {
+        return String::new();
+    }
+    let accent = weather_accent(condition, status, false);
+    let phase = ((progress.clamp(0.0, 1.0) * 4.0).floor() as usize).min(3);
+    let frames = match (accent, ascii) {
+        ("╱╱", false) => ["╱   ╱", " ╱   ╱", "  ╱   ╱", "╱   ╱"],
+        ("⁙", false) => ["·  *  ·", " *  ·  *", "·  *  ·", " *  ·  *"],
+        ("✦", false) => ["·  ✧  ·", "  ✦  ", "· ✺ ·", "  ✦  "],
+        ("☁", false) => ["☁      ", "  ☁    ", "    ☁  ", "      ☁"],
+        ("≋", false) => ["≋    ≋", " ≋  ≋ ", "  ≋≋  ", " ≋  ≋ "],
+        ("╱╱", true) => ["/   /", " /   /", "  /   /", "/   /"],
+        ("⁙" | "✦", true) => [". * .", " * * ", ". * .", " * * "],
+        ("☁" | "≋", true) => ["~~    ", " ~~   ", "  ~~  ", "   ~~ "],
+        _ => return String::new(),
+    };
+    frames[phase].to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

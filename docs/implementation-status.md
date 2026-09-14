@@ -105,4 +105,10 @@ WP08 writer is next; WP11 delivery runs in task
 `01a0a168-3923-73d1-b823-ad6c90db4596`, worktree
 `C:\Users\jtill\.codex\worktrees\b3cd\cap`, branch `codex/cap-delivery`.
 WP10 follow-up targets actual scroll restoration and deferred selection.
-Final motion, integration, installation and native acceptance remain outstanding.
+Root motion integration is complete in development: moving seal/weather,
+once-only milestone receipt, streaming unseal and drawn garden. A native console
+run found and verified fixes for memory width and scrollback redraw ownership;
+see [presentation evidence](evidence/presentation.md). WP08 is active in task
+`01a0a172-c0a1-7800-9252-96aa2b9b6b4f`, worktree
+`C:\Users\jtill\.codex\worktrees\b988\cap`, branch `codex/cap-writer`.
+Final writer/delivery integration, installation and native acceptance remain outstanding.

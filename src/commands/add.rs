@@ -18,7 +18,7 @@ use capsule_core::{
     },
     contracts::{BackupPolicy, CaptureOutcome, CaptureRequest, ContextResult},
     db::{self, ResolvedCapsule},
-    identity, JournalReader,
+    identity,
 };
 use chrono::{Local, Utc};
 use serde_json::json;
@@ -144,8 +144,6 @@ fn capture_internal_seeded(
     validate_presentation_flags(global)?;
     let created_at = Local::now().fixed_offset();
     let resolved = query::resolve(global).map_err(|error| AppError::new("DB_READ", error, 3))?;
-    let reader = JournalReader::open(resolved.database_path.clone())
-        .map_err(|error| AppError::new("DB_READ", error.to_string(), 3))?;
     if !resolved.capabilities.supports_write() {
         let reason = resolved
             .capabilities
@@ -156,7 +154,9 @@ fn capture_internal_seeded(
         return Err(AppError::new("UNSUPPORTED_SCHEMA", reason, 3));
     }
 
-    let context_settings = load_context_settings(&reader, &resolved)?;
+    // Read-only entry readers intentionally refuse ID repair. Capture instead
+    // lets the shared mutation path perform supported repairs after backup.
+    let context_settings = load_context_settings(&resolved)?;
     let default_backup_policy = backup_policy(&resolved);
     let frozen_request = frozen.is_some();
     let mut request = if let Some(request) = frozen {
@@ -204,7 +204,15 @@ fn capture_internal_seeded(
         request.tags = args.tags.clone();
         request.starred = args.star;
         request.pinned = args.pin;
-        request.continue_from_uuid = args.continue_from.clone();
+        request.continue_from_uuid = match args.continue_from.as_deref() {
+            Some(alias) => {
+                let parent = capsule_core::JournalReader::open(resolved.database_path.clone())
+                    .and_then(|reader| reader.get(alias, true))
+                    .map_err(|error| AppError::new("INVALID_CONTINUATION", error.to_string(), 2))?;
+                Some(parent.uuid)
+            }
+            None => None,
+        };
         request.database_identity = resolved.database_identity.clone();
         request.backup_policy = Some(default_backup_policy.clone());
         request
@@ -438,7 +446,25 @@ fn capture_internal_seeded(
         }
     }
 
-    let model = ReceiptModel::from_parts(&request, &receipt, context.as_ref());
+    let mut model = ReceiptModel::from_parts(&request, &receipt, context.as_ref());
+    if !cancellation::requested() {
+        if let Some(identity) = request.database_identity.as_ref() {
+            match crate::insights::MemoryStateStore::from_env() {
+                Ok(store) => {
+                    let milestones = store.milestone_receipt_for_committed(
+                        &request.database_path,
+                        identity,
+                        Local::now().date_naive(),
+                        &receipt.uuid,
+                        false,
+                    );
+                    model.milestones = milestones.glints;
+                    warnings.extend(milestones.warnings);
+                }
+                Err(error) => warnings.push(format!("Milestones unavailable: {error}")),
+            }
+        }
+    }
     let (human, effect_warning) = render_receipt(&request, &model, global);
     if let Some(warning) = effect_warning {
         warnings.push(warning);
@@ -504,15 +530,13 @@ fn dry_run(
 }
 
 fn load_context_settings(
-    reader: &JournalReader,
     resolved: &ResolvedCapsule,
 ) -> Result<capsule_core::location::ContextSettings, AppError> {
     let config_path = match resolved.config_source {
         db::PathSource::Explicit | db::PathSource::Environment => resolved.config_path.as_deref(),
         _ => None,
     };
-    reader
-        .context_settings(config_path)
+    capsule_core::location::load_context_settings(&resolved.database_path, config_path)
         .map_err(|error| AppError::new("CONTEXT_READ", error.to_string(), 3))
 }
 
@@ -608,16 +632,13 @@ fn render_receipt(
     global: &GlobalOptions,
 ) -> (String, Option<String>) {
     let capabilities = cap_effects::TerminalCapabilities::detect();
-    let presentation = preferences::resolve_from_store(global, &capabilities).ok();
-    let (theme, output) = presentation
-        .map(|value| (value.theme, value.output))
-        .unwrap_or((
-            crate::ui::themes::Theme::Aurora,
-            cap_effects::ResolvedOutputMode::Human {
-                color: cap_effects::ColorMode::Plain,
-                motion: cap_effects::MotionMode::Off,
-            },
-        ));
+    let presentation =
+        preferences::resolve_from_store(global, &capabilities).unwrap_or_else(|_| {
+            preferences::resolve_defaults(global, &capabilities)
+                .expect("presentation flags validated before save")
+        });
+    let theme = presentation.theme;
+    let output = presentation.output;
     let color = output.color();
     let animate = matches!(
         output,
@@ -626,7 +647,7 @@ fn render_receipt(
             color: effect_color,
         } if capabilities.is_tty && effect_color != cap_effects::ColorMode::Plain
     );
-    if animate {
+    if animate && presentation.icon_mode != preferences::IconMode::Ascii {
         let mut stdout = io::stdout().lock();
         match receipt::animate_seal(
             &mut stdout,
@@ -638,11 +659,12 @@ fn render_receipt(
         ) {
             Ok(result) if !result.cancelled => {
                 return (
-                    receipt::render_human_after_animation(
-                        request,
+                    receipt::render_with_preferences(
+                        Some(request),
                         model,
-                        color,
+                        &presentation,
                         capabilities.compact_width(),
+                        false,
                     ),
                     None,
                 );
@@ -653,12 +675,12 @@ fn render_receipt(
             }
             Err(error) => {
                 return (
-                    receipt::render_human(
-                        request,
+                    receipt::render_with_preferences(
+                        Some(request),
                         model,
-                        theme,
-                        color,
+                        &presentation,
                         capabilities.compact_width(),
+                        true,
                     ),
                     Some(format!("Seal effect unavailable after save: {error}")),
                 );
@@ -666,7 +688,13 @@ fn render_receipt(
         }
     }
     (
-        receipt::render_human(request, model, theme, color, capabilities.compact_width()),
+        receipt::render_with_preferences(
+            Some(request),
+            model,
+            &presentation,
+            capabilities.compact_width(),
+            true,
+        ),
         None,
     )
 }
@@ -834,14 +862,23 @@ fn render_saved_receipt(model: &ReceiptModel, global: &GlobalOptions) -> String 
     // A confirmed receipt intentionally has no body text. Keep its final
     // status readable without reconstructing or inventing authored content.
     let capabilities = cap_effects::TerminalCapabilities::detect();
-    let presentation = preferences::resolve_from_store(global, &capabilities).ok();
-    let (theme, color) = presentation
-        .map(|value| (value.theme, value.output.color()))
-        .unwrap_or((
-            crate::ui::themes::Theme::Aurora,
+    let presentation = preferences::resolve_from_store(global, &capabilities)
+        .or_else(|_| preferences::resolve_defaults(global, &capabilities));
+    match presentation {
+        Ok(style) => receipt::render_with_preferences(
+            None,
+            model,
+            &style,
+            capabilities.compact_width(),
+            true,
+        ),
+        Err(_) => receipt::render_saved(
+            model,
+            crate::ui::themes::Theme::Paper,
             cap_effects::ColorMode::Plain,
-        ));
-    receipt::render_saved(model, theme, color, capabilities.compact_width())
+            capabilities.compact_width(),
+        ),
+    }
 }
 
 fn handle_capture_error(

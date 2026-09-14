@@ -61,12 +61,20 @@ calendar dates, visible entries by default, and a cap-local state file for
 non-repeating recall and once-only daily/weekly glints. Garden tiers are
 0 bare, 1–49 seed, 50–199 sprout, 200–499 leaf, and 500+ bloom words; the
 daily and weekly glint thresholds are 50 and 500 words. These commands never
-write journal, XP, badge, or quest rows. All five commands are registered;
-capture-receipt glints and final motion polish are being integrated.
+write journal, XP, badge, or quest rows. All five commands are registered.
+Capture receipts show a once-only glint when that entry crosses a real daily
+or weekly threshold. An unavailable optional statistic never changes save success.
 Human memory views also expose pure time-injected frames and guarded TTY
 streaming: the unseal cue is capped at 700ms, the seven-day garden grows in at
 400ms, and the calendar uses a static grid capped at 300ms. JSON, quiet, plain,
 redirected, reduced-motion, and narrow (40-column) output stay deterministic.
+The live receipt closes two capsule halves and adds a 250ms weather accent only
+when a condition was captured or cached, within the same 650ms save ceremony.
+Recall opens the shell before its date and static body; garden draws seven small
+plants above its word-count legend. Memory views use available width and preserve
+scrollback; a scene taller than the terminal finishes without repeated redraws.
+Set `preview_visibility never` to hide save previews, or `icon_mode ascii` for
+ASCII decorations. Cached weather keeps its original observation timestamp.
 The shared Capsule core is fetched from a reviewed Git revision recorded in
 Cargo.toml/Cargo.lock; a local Capsule or Python checkout is not needed to build.
 Preference updates use a flushed temporary file and same-directory replacement;

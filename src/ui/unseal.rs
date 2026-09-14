@@ -4,8 +4,8 @@
 use std::io::{self, Write};
 
 use cap_effects::{
-    animate_frames_with_cancel, final_frame, frame_at, layout_text, AnimationResult, EffectBudget,
-    EffectConfig, EffectFrame, OutputRequest, TerminalCapabilities,
+    animate_frames_with_cancel, final_frame, layout_text, AnimationResult, EffectConfig,
+    EffectFrame, OutputRequest, TerminalCapabilities,
 };
 use capsule_core::stats::MemoryEntry;
 
@@ -38,16 +38,6 @@ fn recall_body(entry: &MemoryEntry) -> String {
     )
 }
 
-fn opening_config(config: &EffectConfig) -> EffectConfig {
-    let mut opening = config.clone();
-    opening.budget = EffectBudget::QuickSave;
-    opening.stagger_seconds = opening.stagger_seconds.min(0.01);
-    opening.fade_seconds = opening.fade_seconds.min(0.2);
-    opening.shimmer = false;
-    opening.shimmer_seconds = 0.0;
-    opening
-}
-
 pub fn format_on_this_day(date: &str, entries: &[MemoryEntry]) -> String {
     if entries.is_empty() {
         return format!("On this day · {date}\nNo entries from earlier years.");
@@ -76,18 +66,40 @@ pub fn recall_frame_at(
     config: &EffectConfig,
     elapsed_seconds: f64,
 ) -> EffectFrame {
+    recall_frame_with_icons(entry, width, config, elapsed_seconds, false)
+}
+
+pub fn recall_frame_with_icons(
+    entry: Option<&MemoryEntry>,
+    width: usize,
+    config: &EffectConfig,
+    elapsed_seconds: f64,
+    ascii: bool,
+) -> EffectFrame {
     let Some(entry) = entry else {
         let layout = layout_text("No visible memories to recall.", width, false);
         return final_frame(&layout, config);
     };
-    let opening_layout = layout_text(&recall_opening(entry), width, false);
-    let opening = opening_config(config);
-    let mut frame = frame_at(&opening_layout, &opening, elapsed_seconds);
+    let opened = (elapsed_seconds / 0.35).clamp(0.0, 1.0);
+    let mut scene = super::ceremony::capsule_outline(1.0 - opened, width, ascii);
+    scene.push_str("\nTIME MACHINE UNSEAL");
+    if elapsed_seconds >= 0.35 {
+        scene.push('\n');
+        scene.push_str(&entry.date);
+    }
+    let mut frame = final_frame(&layout_text(&scene, width, false), config);
+    frame.done = elapsed_seconds >= 0.65;
+    frame.elapsed_seconds = elapsed_seconds;
     // The authored body is laid out/rendered only after the small temporal
     // cue has completed. This keeps long entries out of the animated sampler
     // while still producing one complete static body at the end.
     if frame.done {
-        let body_layout = layout_text(&recall_body(entry), width, false);
+        let mood = entry
+            .mood
+            .as_deref()
+            .map(|mood| format!("\nmood: {mood}"))
+            .unwrap_or_default();
+        let body_layout = layout_text(&format!("{mood}{}", recall_body(entry)), width, false);
         frame.rows.extend(final_frame(&body_layout, config).rows);
     }
     frame

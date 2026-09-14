@@ -22,6 +22,12 @@ use capsule_core::{
 use serde_json::json;
 
 pub fn run(identifier: &str, global: &GlobalOptions) -> Result<CommandOutput, AppError> {
+    let _presentation = crate::preferences::resolve_from_store(
+        global,
+        &cap_effects::TerminalCapabilities::detect(),
+    )
+    .map_err(|error| AppError::new("INVALID_CONFIG", error.to_string(), 2))?;
+    let _ = crate::cancellation::install();
     let resolved = query::resolve(global).map_err(|error| AppError::new("DB_READ", error, 3))?;
     let reader = JournalReader::open(resolved.database_path.clone())
         .map_err(|error| AppError::new("DB_READ", error.to_string(), 3))?;

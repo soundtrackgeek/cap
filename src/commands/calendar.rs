@@ -1,4 +1,3 @@
-use cap_effects::TerminalCapabilities;
 use capsule_core::stats::{self, NaiveDate};
 
 use crate::{
@@ -30,6 +29,7 @@ pub fn run_at(
     include_hidden: bool,
     global: &GlobalOptions,
 ) -> Result<CommandOutput, AppError> {
+    let presentation = crate::ui::memory::MemoryPresentation::resolve(global)?;
     let (reader, _) =
         query::open_reader(global).map_err(|error| AppError::new("DB_READ", error, 3))?;
     let calendar =
@@ -37,9 +37,12 @@ pub fn run_at(
             .map_err(|error| AppError::new("DB_READ", error.to_string(), 3))?;
     let data = serde_json::to_value(&calendar)
         .map_err(|error| AppError::new("OUTPUT", error.to_string(), 1))?;
-    let width = TerminalCapabilities::detect().compact_width();
-    let human = query::human_text(&calendar_ui::format_calendar(&calendar, width), global)
-        .map_err(|error| AppError::new("INVALID_CONFIG", error, 2))?;
+    let human = presentation.present(
+        |_elapsed, width, config| {
+            calendar_ui::calendar_frame_with_icons(&calendar, width, config, presentation.ascii())
+        },
+        std::time::Duration::from_millis(300),
+    )?;
     Ok(CommandOutput::new(data, human))
 }
 

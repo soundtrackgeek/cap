@@ -3,7 +3,7 @@
 use std::io::{self, Write};
 
 use cap_effects::{
-    animate_frames_with_cancel, final_frame, frame_at, layout_text, AnimationResult, EffectConfig,
+    animate_frames_with_cancel, final_frame, layout_text, AnimationResult, EffectConfig,
     EffectFrame, OutputRequest, TerminalCapabilities,
 };
 use capsule_core::stats::{GardenGrowth, MemoryGarden};
@@ -93,16 +93,66 @@ pub fn garden_frame_at(
     config: &EffectConfig,
     elapsed_seconds: f64,
 ) -> EffectFrame {
+    garden_frame_with_icons(garden, width, config, elapsed_seconds, false)
+}
+
+pub fn garden_frame_with_icons(
+    garden: &MemoryGarden,
+    width: usize,
+    config: &EffectConfig,
+    elapsed_seconds: f64,
+    ascii: bool,
+) -> EffectFrame {
     let progress = (elapsed_seconds / 0.4).clamp(0.0, 1.0);
-    let scene = garden_scene_at(garden, progress);
-    let layout = layout_text(&scene, width, false);
-    let mut frame = if progress >= 1.0 {
-        final_frame(&layout, config)
+    let mut scene = String::new();
+    if width >= 42 {
+        scene.push_str(&plant_bed_at(garden, progress));
+        scene.push('\n');
+    }
+    if progress >= 1.0 {
+        scene.push_str(&garden_scene_at(garden, 1.0));
     } else {
-        frame_at(&layout, config, elapsed_seconds)
-    };
+        scene.push_str("Seven-day writing garden");
+    }
+    if ascii {
+        scene = scene
+            .replace('·', ".")
+            .replace('✧', "*")
+            .replace('♧', "v")
+            .replace('❧', "Y")
+            .replace('✿', "@");
+    }
+    let layout = layout_text(&scene, width, false);
+    let mut frame = final_frame(&layout, config);
     frame.done = progress >= 1.0;
     frame
+}
+
+/// Seven distinct small plants share a soil line; a quiet day stays bare.
+fn plant_bed_at(garden: &MemoryGarden, progress: f64) -> String {
+    let mut rows = vec![String::new(); 5];
+    for (index, day) in garden.days.iter().enumerate() {
+        let growth = growth_at_progress(
+            day.growth,
+            (progress * garden.days.len().max(1) as f64 - index as f64).clamp(0.0, 1.0),
+        );
+        let sprite = match growth {
+            GardenGrowth::Bare => ["     ", "     ", "     ", "_____"],
+            GardenGrowth::Seed => ["     ", "     ", "  .  ", "_____"],
+            GardenGrowth::Sprout => ["     ", " \\/  ", "  |  ", "__|__"],
+            GardenGrowth::Leaf => ["  |  ", " \\|/ ", "  |  ", "__|__"],
+            GardenGrowth::Bloom => [" (@) ", " \\|/ ", "  |  ", "__|__"],
+        };
+        for (row, text) in rows.iter_mut().take(4).zip(sprite) {
+            row.push_str(text);
+            row.push(' ');
+        }
+        rows[4].push_str(&format!(" {:^3}  ", day.date.get(8..10).unwrap_or("?")));
+    }
+    rows.iter()
+        .map(|row| row.trim_end())
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// Stream the garden's pure timed frames through cap-effects' terminal guard.

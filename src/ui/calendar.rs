@@ -68,7 +68,20 @@ pub fn calendar_frame_at(
     config: &EffectConfig,
     _elapsed_seconds: f64,
 ) -> EffectFrame {
-    let layout = layout_text(&format_calendar(calendar, width), width, false);
+    calendar_frame_with_icons(calendar, width, config, false)
+}
+
+pub fn calendar_frame_with_icons(
+    calendar: &MemoryCalendar,
+    width: usize,
+    config: &EffectConfig,
+    ascii: bool,
+) -> EffectFrame {
+    let mut text = format_calendar(calendar, width);
+    if ascii {
+        text = text.replace('·', ".");
+    }
+    let layout = layout_text(&text, width, false);
     let mut frame = final_frame(&layout, config);
     let mut day_index = 0usize;
     let mut in_grid = false;
@@ -91,7 +104,7 @@ pub fn calendar_frame_at(
             let Some(day) = calendar.days.get(day_index) else {
                 break;
             };
-            if matches!(cell.text.as_str(), "·" | "*" | "#") {
+            if matches!(cell.text.as_str(), "·" | "." | "*" | "#") {
                 let brightness = match day.entry_count {
                     0 => 0.35,
                     1 => 0.7,

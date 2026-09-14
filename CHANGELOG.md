@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.2.0-dev.26 - 2026-09-14
+
+### Added
+
+- Moving capsule halves, weather motion from saved conditions, once-only real
+  milestone glints, a timed recall unseal, and seven drawn garden plants.
+- Executable coverage for all five memory routes, milestone crossings and
+  no-context enrichment; direct terminal input dependencies for the writer.
+
+### Fixed
+
+- Memory views use available terminal width and redraw only rows they own.
+  Long final bodies preserve earlier scrollback; tall scenes finish statically.
+- Receipts honor hidden previews/ASCII icons and label cached observations with
+  their original fetched timestamp. Enrichment validates presentation first.
+- Capture permits shared-core backup-guarded nullable-ID repair, while ambiguous
+  duplicate IDs remain refused. Continuation display aliases freeze to UUIDs.
+
 ## 0.2.0-dev.24 - 2026-09-14
 
 ### Added

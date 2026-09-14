@@ -129,19 +129,22 @@ checksum = "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04"
 
 [[package]]
 name = "cap"
-version = "0.2.0-dev.24"
+version = "0.2.0-dev.26"
 dependencies = [
  "anyhow",
  "cap-effects",
  "capsule-core",
  "chrono",
  "clap",
+ "crossterm",
  "ctrlc",
  "rusqlite",
  "serde",
  "serde_json",
  "sha2",
  "tempfile",
+ "unicode-segmentation",
+ "unicode-width",
 ]
 
 [[package]]

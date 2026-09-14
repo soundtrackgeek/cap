@@ -7,8 +7,9 @@ use std::{
 };
 
 use cap_effects::{
-    animate_text_with_cancel, grapheme_width, layout_text, render_text, sanitize_text,
-    AnimationResult, ColorChoice, ColorMode, MotionChoice, OutputRequest, TerminalCapabilities,
+    animate_frames_with_cancel, final_frame, grapheme_width, layout_text, render_text,
+    sanitize_text, AnimationResult, ColorChoice, ColorMode, MotionChoice, OutputRequest,
+    TerminalCapabilities,
 };
 use capsule_core::contracts::{CaptureRequest, CommitReceipt, ContextResult};
 use serde::{Deserialize, Serialize};
@@ -28,6 +29,8 @@ pub struct ReceiptModel {
     pub location: ReceiptLocation,
     pub weather: ReceiptWeather,
     pub backup: ReceiptBackup,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub milestones: Vec<crate::insights::MilestoneGlint>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -120,6 +123,7 @@ impl ReceiptModel {
                     .map(|value| sanitize_text(&value.to_string_lossy())),
                 operation: receipt.backup_operation.as_deref().map(sanitize_text),
             },
+            milestones: Vec::new(),
         }
     }
 
@@ -176,7 +180,15 @@ pub fn render_human(
     color: ColorMode,
     width: usize,
 ) -> String {
-    render_human_with_heading(request, model, theme, color, width, true)
+    render_human_with_heading(
+        Some(request),
+        model,
+        theme,
+        color,
+        width,
+        true,
+        color == ColorMode::Plain,
+    )
 }
 
 /// Render the static portion after an animated heading has already been
@@ -188,38 +200,72 @@ pub fn render_human_after_animation(
     color: ColorMode,
     width: usize,
 ) -> String {
-    render_human_with_heading(request, model, Theme::Aurora, color, width, false)
+    render_human_with_heading(
+        Some(request),
+        model,
+        Theme::Aurora,
+        color,
+        width,
+        false,
+        color == ColorMode::Plain,
+    )
 }
 
+pub fn render_with_preferences(
+    request: Option<&CaptureRequest>,
+    model: &ReceiptModel,
+    style: &crate::preferences::EffectivePresentation,
+    width: usize,
+    heading: bool,
+) -> String {
+    let request = if style.preview_visibility == crate::preferences::PreviewVisibility::Never {
+        None
+    } else {
+        request
+    };
+    render_human_with_heading(
+        request,
+        model,
+        style.theme,
+        style.output.color(),
+        width,
+        heading,
+        style.icon_mode == crate::preferences::IconMode::Ascii,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
 fn render_human_with_heading(
-    request: &CaptureRequest,
+    request: Option<&CaptureRequest>,
     model: &ReceiptModel,
     theme: Theme,
     color: ColorMode,
     width: usize,
     include_heading: bool,
+    ascii: bool,
 ) -> String {
-    let width = width.clamp(12, 120);
-    let plain = color == ColorMode::Plain;
+    let width = width.clamp(1, 120);
     let mut output = String::new();
     if include_heading {
-        output.push_str(&render_heading(model, theme, color, width));
+        output.push_str(&render_heading(model, theme, color, width, ascii));
         output.push('\n');
     }
-    let preview = layout_text(
-        &sanitize_text(&request.text),
-        width.saturating_sub(2).max(1),
-        false,
-    )
-    .plain_lines()
-    .into_iter()
-    .take(2)
-    .collect::<Vec<_>>();
-    for line in preview {
-        let _ = writeln!(output, "{line}");
+    if let Some(request) = request {
+        let preview = layout_text(
+            &sanitize_text(&request.text),
+            width.saturating_sub(2).max(1),
+            false,
+        )
+        .plain_lines()
+        .into_iter()
+        .take(2)
+        .collect::<Vec<_>>();
+        for line in preview {
+            let _ = writeln!(output, "{line}");
+        }
+        output.push('\n');
     }
-    output.push('\n');
-    output.push_str(&render_metadata(model, plain, width));
+    output.push_str(&render_metadata(model, ascii, width));
     output.trim_end().to_string()
 }
 
@@ -230,7 +276,7 @@ pub fn render_saved(model: &ReceiptModel, theme: Theme, color: ColorMode, width:
     let plain = color == ColorMode::Plain;
     format!(
         "{}\n{}",
-        render_heading(model, theme, color, width),
+        render_heading(model, theme, color, width, plain),
         render_metadata(model, plain, width)
     )
 }
@@ -278,14 +324,67 @@ pub fn animate_seal<W: Write, F: Fn() -> bool>(
         },
         motion: MotionChoice::Full,
     };
-    animate_text_with_cancel(
+    let config = theme.effect_config(false);
+    animate_frames_with_cancel(
         writer,
-        &seal_text(model),
-        &theme.effect_config(false),
+        &config,
         request,
         capabilities,
+        |elapsed, width| seal_frame_at(model, theme, width.min(40), elapsed, false),
         should_cancel,
+        Duration::from_millis(650),
     )
+}
+
+/// Geometry is independent of I/O, making actual shell travel and weather
+/// movement verifiable without recording private journal content.
+pub fn seal_frame_at(
+    model: &ReceiptModel,
+    theme: Theme,
+    width: usize,
+    seconds: f64,
+    ascii: bool,
+) -> cap_effects::EffectFrame {
+    let seconds = if seconds.is_finite() {
+        seconds.max(0.0)
+    } else {
+        0.65
+    };
+    let mut scene = if model.milestones.is_empty() {
+        format!(
+            "{}\nCAPSULE SEALED",
+            super::ceremony::capsule_outline((seconds / 0.35).min(1.0), width, ascii)
+        )
+    } else {
+        // A milestone uses the same time slot instead of stacking ceremonies.
+        let star = if ascii {
+            "*"
+        } else if seconds < 0.12 {
+            "·"
+        } else if seconds < 0.24 {
+            "✧"
+        } else {
+            "✦"
+        };
+        format!("{star} CAPSULE SEALED")
+    };
+    let weather = if seconds >= 0.4 {
+        super::weather::weather_motion(
+            model.weather.condition.as_deref(),
+            &model.weather.status,
+            (seconds - 0.4) / 0.25,
+            ascii,
+        )
+    } else {
+        String::new()
+    };
+    scene.push('\n');
+    scene.push_str(&weather);
+    let config = theme.effect_config(false);
+    let mut frame = final_frame(&layout_text(&scene, width.max(1), false), &config);
+    frame.done = seconds >= 0.65;
+    frame.elapsed_seconds = seconds;
+    frame
 }
 
 fn context_status(status: Option<capsule_core::contracts::ContextStatus>) -> String {
@@ -295,9 +394,22 @@ fn context_status(status: Option<capsule_core::contracts::ContextStatus>) -> Str
         .unwrap_or_else(|| "skipped".to_string())
 }
 
-fn render_heading(model: &ReceiptModel, theme: Theme, color: ColorMode, width: usize) -> String {
-    if color == ColorMode::Plain {
-        "[ CAPSULE SEALED ]".to_string()
+fn render_heading(
+    model: &ReceiptModel,
+    theme: Theme,
+    color: ColorMode,
+    width: usize,
+    ascii: bool,
+) -> String {
+    if ascii || color == ColorMode::Plain {
+        render_text(
+            "[ CAPSULE SEALED ]",
+            width,
+            &theme.effect_config(false),
+            color,
+        )
+        .trim_end()
+        .to_string()
     } else {
         render_text(
             &seal_text(model),
@@ -326,6 +438,22 @@ fn render_metadata(model: &ReceiptModel, plain: bool, width: usize) -> String {
     }
     let saved = format!("{}  Saved to Capsule", sanitize_text(&model.entry_uuid));
     lines.extend(layout_text(&saved, width, false).plain_lines());
+    for glint in &model.milestones {
+        let period = if glint.kind == "daily_words" {
+            "today"
+        } else {
+            "this week"
+        };
+        let star = if plain { "*" } else { "✦" };
+        lines.extend(
+            layout_text(
+                &format!("{star} {} words {period}", glint.threshold),
+                width,
+                false,
+            )
+            .plain_lines(),
+        );
+    }
     lines.join("\n")
 }
 
@@ -341,7 +469,7 @@ fn render_stamp_from_model(model: &ReceiptModel, plain: bool) -> String {
             "skipped" => "Location skipped",
             _ => "Location unavailable",
         });
-    let weather = match model.weather.condition.as_deref() {
+    let mut weather = match model.weather.condition.as_deref() {
         Some(condition) => model
             .weather
             .temp_c
@@ -355,6 +483,14 @@ fn render_stamp_from_model(model: &ReceiptModel, plain: bool) -> String {
         }
         .to_string(),
     };
+    if model.weather.status == "cached" {
+        weather.push_str(" (cached");
+        if let Some(fetched) = model.weather.fetched_at.as_deref() {
+            weather.push_str(" · fetched ");
+            weather.push_str(&sanitize_text(fetched));
+        }
+        weather.push(')');
+    }
     let accent = weather_accent(
         model.weather.condition.as_deref(),
         &model.weather.status,
@@ -414,5 +550,54 @@ mod tests {
         assert!(seal_text(&model).contains('◖'));
         assert!(seal_text(&model).contains('◗'));
         assert!(seal_text(&model).contains('◇'));
+    }
+
+    #[test]
+    fn live_scene_moves_shells_and_weather_but_never_contains_authored_body() {
+        let request = request();
+        let receipt = CommitReceipt::committed("entry-1", "cap-1", Utc::now());
+        let mut model = ReceiptModel::from_parts(&request, &receipt, None);
+        model.weather.status = "captured".into();
+        model.weather.condition = Some("Light rain".into());
+        let scene = |time| {
+            seal_frame_at(&model, Theme::Aurora, 39, time, false)
+                .plain_lines()
+                .join("\n")
+        };
+        assert_ne!(scene(0.0), scene(0.35));
+        assert_ne!(scene(0.41), scene(0.56));
+        assert!(!scene(0.65).contains("A two line"));
+        assert!(seal_frame_at(&model, Theme::Aurora, 39, 0.65, false).done);
+    }
+
+    #[test]
+    fn hidden_preview_ascii_icons_and_cached_stamp_survive_narrow_layout() {
+        let request = request();
+        let receipt = CommitReceipt::committed("entry-1", "cap-1", Utc::now());
+        let mut model = ReceiptModel::from_parts(&request, &receipt, None);
+        model.weather.status = "cached".into();
+        model.weather.condition = Some("Rain".into());
+        model.weather.fetched_at = Some("2026-09-14T18:00:00Z".into());
+        let caps = TerminalCapabilities::synthetic(true, 24, true, true, false, false, false);
+        let prefs = crate::preferences::Preferences {
+            icon_mode: crate::preferences::IconMode::Ascii,
+            preview_visibility: crate::preferences::PreviewVisibility::Never,
+            ..Default::default()
+        };
+        let style = prefs
+            .resolve(&crate::cli::GlobalOptions::default(), &caps)
+            .unwrap();
+        let text = cap_effects::sanitize_text(&render_with_preferences(
+            Some(&request),
+            &model,
+            &style,
+            24,
+            true,
+        ));
+        assert!(!text.contains("A two line"));
+        assert!(!text.contains('◖'));
+        assert!(text.contains("cached"));
+        assert!(text.contains("fetched"));
+        assert!(text.lines().all(|line| grapheme_width(line) <= 24));
     }
 }
