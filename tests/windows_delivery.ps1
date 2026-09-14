@@ -44,6 +44,7 @@ $marker = Join-Path $tempRoot '.cap-delivery-tests-owned'
 [IO.File]::WriteAllText($marker, '')
 $holderStream = $null
 $receiptHolderStream = $null
+$lateSourceHolder = $null
 try {
     $sourceDirectory = Join-Path $tempRoot 'source with spaces'
     [IO.Directory]::CreateDirectory($sourceDirectory) | Out-Null
@@ -120,6 +121,24 @@ try {
     Assert-Condition (-not (Test-Path -LiteralPath (Join-Path $metadataRoot '.cap-install.json'))) 'metadata collision left a receipt behind'
     Assert-Condition ([IO.File]::ReadAllText($pathState) -eq $metadataPathBefore) 'metadata collision changed PATH state'
 
+    $latePackage = Join-Path $tempRoot 'late source failure package'
+    [IO.Directory]::CreateDirectory($latePackage) | Out-Null
+    $lateSource = Join-Path $latePackage 'cap.exe'
+    [IO.File]::WriteAllBytes($lateSource, [Text.Encoding]::UTF8.GetBytes('cap-late-source-failure'))
+    $lateHash = Get-Sha256 $lateSource
+    [IO.File]::WriteAllText((Join-Path $latePackage 'checksums.sha256'), "$lateHash  cap.exe`n", [Text.UTF8Encoding]::new($false))
+    $lateManifest = Join-Path $latePackage 'manifest.json'
+    [IO.File]::WriteAllText($lateManifest, '{"package":"late-source-failure"}', [Text.UTF8Encoding]::new($false))
+    $lateRoot = Join-Path $tempRoot 'late source failure\cap'
+    $latePathBefore = [IO.File]::ReadAllText($pathState)
+    $lateSourceHolder = [IO.File]::Open($lateManifest, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::None)
+    Expect-Failure { & $installScript -SourcePath $lateSource -PackageRoot $latePackage -InstallRoot $lateRoot -PathStatePath $pathState } 'late source failure was accepted'
+    $lateSourceHolder.Dispose()
+    $lateSourceHolder = $null
+    Assert-Condition (-not (Test-Path -LiteralPath (Join-Path $lateRoot 'bin\cap.exe'))) 'late source failure left an executable behind'
+    Assert-Condition (-not (Test-Path -LiteralPath (Join-Path $lateRoot '.cap-install.json'))) 'late source failure left a receipt behind'
+    Assert-Condition ([IO.File]::ReadAllText($pathState) -eq $latePathBefore) 'late source failure changed PATH state'
+
     $completionFailureRoot = Join-Path $tempRoot 'completion profile failure\cap'
     $completionProfileDirectory = Join-Path $tempRoot 'completion profile failure\profile directory'
     [IO.Directory]::CreateDirectory($completionProfileDirectory) | Out-Null
@@ -161,11 +180,12 @@ try {
     Assert-Condition ([IO.File]::ReadAllText($pathState) -eq $originalPath) 'uninstall did not restore the exact PATH text'
     Assert-Condition (Test-Path -LiteralPath (Join-Path $journalSentinel 'capsule.db')) 'uninstall touched journal/recovery/settings data'
 
-    [pscustomobject]@{ ok = $true; cases = @('spaces', 'checksum', 'receipt-lock-rollback', 'metadata-collision', 'completion-profile-failure', 'collision', 'running-binary', 'locked-uninstall', 'path-preservation', 'uninstall-data-safety') } | ConvertTo-Json -Depth 4
+    [pscustomobject]@{ ok = $true; cases = @('spaces', 'checksum', 'receipt-lock-rollback', 'metadata-collision', 'late-source-rollback', 'completion-profile-failure', 'collision', 'running-binary', 'locked-uninstall', 'path-preservation', 'uninstall-data-safety') } | ConvertTo-Json -Depth 4
 }
 finally {
     if ($null -ne $holderStream) { $holderStream.Dispose() }
     if ($null -ne $receiptHolderStream) { $receiptHolderStream.Dispose() }
+    if ($null -ne $lateSourceHolder) { $lateSourceHolder.Dispose() }
     if (-not $KeepArtifacts) {
         if (-not (Test-Path -LiteralPath $marker -PathType Leaf)) { throw "Refusing to remove unmarked test root: $tempRoot" }
         Remove-Item -LiteralPath $tempRoot -Recurse -Force
