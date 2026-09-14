@@ -18,7 +18,10 @@ at runtime.
 4. `resolve_output_mode` applies `json > quiet > plain > explicit settings >
    capabilities`. `animate_text` is the guarded I/O entry point; use
    `animate_text_with_cancel` with an `AtomicBool` callback owned by the CLI so
-   Ctrl+C can unwind normally and restore the terminal.
+   Ctrl+C can unwind normally and restore the terminal. Stateful callers can
+   use `animate_frames_with_cancel` to stream clock-injected frames without
+   buffering animation bytes in a command result; it enforces capability-aware
+   width, non-TTY static output, and a caller-supplied budget.
 
 The source-backed helpers `PALETTES`, `palette_color`, `lerp_rgb`, `pick_color`,
 `hsv_to_rgb`, and `intensity` are public for receipts, themes, and reference

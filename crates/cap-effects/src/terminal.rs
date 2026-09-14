@@ -496,6 +496,115 @@ pub fn animate_text<W: Write>(
     animate_text_with_cancel(writer, text, config, request, caps, || false)
 }
 
+/// Animate caller-owned pure frames through the same guarded terminal loop as
+/// [`animate_text_with_cancel`].  The callback receives elapsed seconds and
+/// the current terminal width, so stateful scenes (for example a seven-day
+/// garden) can change their content over time without buffering animation
+/// bytes inside a command result.  JSON/quiet and reduced-motion modes still
+/// obey the normal output precedence and render at most one final frame.
+pub fn animate_frames_with_cancel<
+    W: Write,
+    G: FnMut(f64, usize) -> EffectFrame,
+    F: Fn() -> bool,
+>(
+    writer: &mut W,
+    config: &EffectConfig,
+    request: OutputRequest,
+    caps: &TerminalCapabilities,
+    mut frame_at_elapsed: G,
+    should_cancel: F,
+    max_duration: Duration,
+) -> io::Result<AnimationResult> {
+    let mode = resolve_output_mode(request, caps);
+    if mode.is_machine() {
+        return Ok(AnimationResult {
+            frames_rendered: 0,
+            resized: false,
+            cancelled: false,
+            elapsed: Duration::ZERO,
+        });
+    }
+    let bounded = config.bounded();
+    let end_seconds = max_duration
+        .as_secs_f64()
+        .min(bounded.budget.max_duration_seconds())
+        .max(0.0);
+    let max_frames = (end_seconds * f64::from(bounded.fps)).ceil() as usize + 1;
+    let mut output_color = mode.color();
+    if output_color.emits_ansi() && !caps.ansi_support {
+        output_color = ColorMode::Plain;
+    }
+    if mode.motion() != MotionMode::Full || !caps.is_tty {
+        let frame = frame_at_elapsed(end_seconds, caps.compact_width());
+        writer.write_all(render_frame(&frame, output_color).as_bytes())?;
+        writer.flush()?;
+        return Ok(AnimationResult {
+            frames_rendered: 1,
+            resized: false,
+            cancelled: false,
+            elapsed: Duration::ZERO,
+        });
+    }
+
+    let options = GuardOptions::for_animation(caps);
+    let mut guard = TerminalGuard::new(writer, options)?;
+    let started = Instant::now();
+    let frame_interval = Duration::from_secs_f64(1.0 / f64::from(bounded.fps));
+    let mut frame_index = 0usize;
+    let mut frames_rendered = 0usize;
+    let mut previous_rows = 0usize;
+    let mut resized = false;
+    let mut cancelled = false;
+    loop {
+        if should_cancel() {
+            cancelled = true;
+            break;
+        }
+        let elapsed = started.elapsed();
+        let elapsed_seconds = elapsed.as_secs_f64().min(end_seconds);
+        let current_width = terminal::size()
+            .map(|(columns, _)| usize::from(columns))
+            .unwrap_or(caps.width);
+        if current_width != caps.width {
+            resized = true;
+        }
+        let layout_width = current_width.saturating_sub(1).clamp(1, DEFAULT_LAYOUT_WIDTH);
+        let mut frame = if resized {
+            frame_at_elapsed(end_seconds, layout_width)
+        } else {
+            frame_at_elapsed(elapsed_seconds, layout_width)
+        };
+        frame.resized = resized;
+        write_redraw(guard.writer(), &frame, output_color, previous_rows)?;
+        previous_rows = frame.rows.len();
+        frames_rendered = frames_rendered.saturating_add(1);
+        frame_index = frame_index.saturating_add(1);
+        if frame.done || resized || elapsed_seconds >= end_seconds || frame_index >= max_frames {
+            break;
+        }
+        let elapsed_now = started.elapsed();
+        // If rendering or the scheduler missed one or more deadlines, jump
+        // directly to the next future deadline instead of bursting catch-up
+        // redraws at the same timestamp.
+        let missed = (elapsed_now.as_secs_f64() / frame_interval.as_secs_f64()) as usize;
+        frame_index = frame_index.max(missed.saturating_add(1));
+        let target = frame_interval
+            .saturating_mul(frame_index as u32)
+            .min(Duration::from_secs_f64(end_seconds));
+        if target > elapsed_now {
+            std::thread::sleep(target - elapsed_now);
+        }
+    }
+    let elapsed = started.elapsed();
+    guard.restore()?;
+    Ok(AnimationResult {
+        frames_rendered,
+        resized,
+        cancelled,
+        elapsed,
+    })
+}
+
 /// Cancellable variant for a CLI that owns a process-level Ctrl+C handler.
 /// The callback should be lock-free (for example an `AtomicBool::load`); when
 /// it returns true the loop stops and the [`TerminalGuard`] restores terminal
@@ -624,6 +733,7 @@ fn write_redraw<W: Write>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::cell::Cell;
 
     #[test]
     fn output_precedence_and_static_fallback_are_strict() {
@@ -665,6 +775,67 @@ mod tests {
                 motion: MotionMode::Off
             }
         );
+    }
+
+    #[test]
+    fn dynamic_frames_are_static_on_non_tty_and_reserve_last_column() {
+        let caps = TerminalCapabilities::synthetic(false, 40, false, false, false, false, false);
+        let request = OutputRequest {
+            color: ColorChoice::Never,
+            motion: MotionChoice::Full,
+            ..OutputRequest::default()
+        };
+        let seen_width = Cell::new(0usize);
+        let mut output = Vec::new();
+        let result = animate_frames_with_cancel(
+            &mut output,
+            &EffectConfig::quick_save(),
+            request,
+            &caps,
+            |_, width| {
+                seen_width.set(width);
+                let layout = layout_text("width-safe", width, false);
+                let mut frame = final_frame(&layout, &EffectConfig::quick_save());
+                frame.done = true;
+                frame
+            },
+            || false,
+            Duration::from_millis(300),
+        )
+        .expect("static frame");
+        assert_eq!(result.frames_rendered, 1);
+        assert_eq!(seen_width.get(), 39);
+        assert!(!String::from_utf8_lossy(&output).contains("\x1b[?25l"));
+    }
+
+    #[test]
+    fn dynamic_frames_restore_terminal_state() {
+        let caps = TerminalCapabilities::synthetic(true, 80, true, true, false, false, false);
+        let request = OutputRequest {
+            color: ColorChoice::Always,
+            motion: MotionChoice::Full,
+            ..OutputRequest::default()
+        };
+        let mut output = Vec::new();
+        let result = animate_frames_with_cancel(
+            &mut output,
+            &EffectConfig::quick_save(),
+            request,
+            &caps,
+            |_, width| {
+                let layout = layout_text("guarded", width, false);
+                let mut frame = final_frame(&layout, &EffectConfig::quick_save());
+                frame.done = true;
+                frame
+            },
+            || false,
+            Duration::from_millis(300),
+        )
+        .expect("guarded frame");
+        assert_eq!(result.frames_rendered, 1);
+        let output = String::from_utf8_lossy(&output);
+        assert!(output.contains("\x1b[?25l"));
+        assert!(output.contains("\x1b[?25h"));
     }
 
     #[test]

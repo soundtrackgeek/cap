@@ -26,7 +26,7 @@ pub use render::{
     ColorMode,
 };
 pub use terminal::{
-    animate_text, animate_text_with_cancel, prepare_ansi_output, resolve_output_mode,
+    animate_frames_with_cancel, animate_text, animate_text_with_cancel, prepare_ansi_output, resolve_output_mode,
     AnimationResult, ColorChoice, GuardOptions, MotionChoice, MotionMode, OutputRequest,
     ResolvedOutputMode, TerminalCapabilities, TerminalGuard,
 };

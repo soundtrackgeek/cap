@@ -5,6 +5,7 @@ pub mod commands;
 pub mod context_cache;
 pub mod contracts;
 pub mod input;
+pub mod insights;
 pub mod output;
 pub mod preferences;
 pub mod query;
