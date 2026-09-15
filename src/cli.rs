@@ -157,7 +157,8 @@ pub struct AddArgs {
     pub stdin: bool,
     #[arg(long)]
     pub mood: Option<String>,
-    #[arg(long = "tag")]
+    /// Tags separated by commas; repeat the option to add more.
+    #[arg(long = "tag", visible_alias = "tags", value_delimiter = ',')]
     pub tags: Vec<String>,
     #[arg(long)]
     pub title: Option<String>,
@@ -308,5 +309,29 @@ mod tests {
         };
         assert_eq!(add.text, ["--literal", "words"]);
         assert_eq!(add.tags, ["life"]);
+    }
+
+    #[test]
+    fn comma_separated_tags_merge_with_repeated_options_without_consuming_text() {
+        let cli = Cli::try_parse_from([
+            "cap",
+            "add",
+            "--tags=life,outdoors",
+            "--tag",
+            "gratitude,exercise",
+            "--tags",
+            "fresh air",
+            "Had a lovely walk, by the water",
+        ])
+        .unwrap();
+        let Some(Command::Add(add)) = cli.command else {
+            panic!("add")
+        };
+        assert_eq!(
+            add.tags,
+            ["life", "outdoors", "gratitude", "exercise", "fresh air"]
+        );
+        assert_eq!(add.text, ["Had a lovely walk, by the water"]);
+        assert!(Cli::try_parse_from(["cap", "add", "--tags"]).is_err());
     }
 }

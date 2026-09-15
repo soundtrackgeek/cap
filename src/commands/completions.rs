@@ -11,7 +11,7 @@ use serde_json::json;
 pub const POWERSHELL_COMPLETION: &str = r#"# cap PowerShell completions (generated; pipe to a file and review before opting in)
 $capCommands = @('add','write','show','today','recent','search','tags','moods','context','doctor','status','recover','enrich','theme','fx','config','completions','recall','on-this-day','calendar','stats','garden')
 $capGlobalOptions = @('--db','--json','--quiet','--plain','--color','--motion','--theme','--offline','--no-context','--dry-run','--help','--version')
-$capOptionValues = @('--db','--color','--motion','--theme')
+$capOptionValues = @('--db','--color','--motion','--theme','--tag','--tags','--mood')
 $capOptionCandidates = @{
     '--theme' = @('aurora','neon','c64','amber','paper')
     '--color' = @('auto','always','never')
@@ -64,7 +64,11 @@ Register-ArgumentCompleter -Native -CommandName cap -ScriptBlock {
     # that trailing token so `cap th`, `cap theme p` and `cap theme preview a`
     # all resolve their parent command/subcommand correctly.
     $completed = @($elements | Select-Object -Skip 1)
-    if ($completed.Count -gt 0 -and [string]::Equals([string]$completed[-1], [string]$wordToComplete, [System.StringComparison]::Ordinal)) {
+    # An unquoted comma list is one array AST, but PowerShell replaces only
+    # its current element. Remove that AST when resolving the parent option.
+    $lastElement = $commandAst.CommandElements[-1]
+    $completingArray = $lastElement -is [System.Management.Automation.Language.ArrayLiteralAst] -and $cursorPosition -ge $lastElement.Extent.StartOffset -and $cursorPosition -le $lastElement.Extent.EndOffset
+    if ($completed.Count -gt 0 -and ($completingArray -or [string]::Equals([string]$completed[-1], [string]$wordToComplete, [System.StringComparison]::Ordinal))) {
         if ($completed.Count -eq 1) { $completed = @() } else { $completed = @($completed[0..($completed.Count - 2)]) }
     }
     $commandTokens = @(Get-CapCommandTokens $completed)
@@ -78,6 +82,7 @@ Register-ArgumentCompleter -Native -CommandName cap -ScriptBlock {
         $candidates = $capOptionCandidates[$optionContext]
     } elseif ($wordToComplete.StartsWith('-')) {
         $candidates = $capGlobalOptions
+        if ($firstCommand -eq 'add') { $candidates += @('--tag','--tags','--mood') }
     } elseif (-not $firstCommand) {
         $candidates = $capCommands
     } else {
@@ -109,11 +114,11 @@ Register-ArgumentCompleter -Native -CommandName cap -ScriptBlock {
     }
 
     # Metadata completion is opt-in per session and read-only.  It supports
-    # `cap add --tag <prefix>` and `cap add --mood <prefix>`.  Explicit --db is
+    # `cap add --tag/--tags <prefix>` and `cap add --mood <prefix>`.  Explicit --db is
     # forwarded as an argument vector, never reparsed as a command string.
     # The effective read-only invocation is `cap --json tags` or
     # `cap --json moods` (with the selected --db forwarded below).
-    $metadataKind = if ($previousToken -eq '--tag' -or $previousToken -eq '--mood') { $previousToken.Substring(2) } else { $null }
+    $metadataKind = if ($previousToken -in @('--tag','--tags')) { 'tag' } elseif ($previousToken -eq '--mood') { 'mood' } else { $null }
     $literalMode = $completed | ForEach-Object { ConvertFrom-CapAstToken ([string]$_) } | Where-Object { $_ -eq '--' }
     if (($env:CAP_COMPLETIONS_METADATA -eq '1') -and $metadataKind -and (-not $literalMode) -and ($wordToComplete -notlike '-*')) {
         try {
@@ -125,10 +130,17 @@ Register-ArgumentCompleter -Native -CommandName cap -ScriptBlock {
             $metadataCommand = if ($metadataKind -eq 'tag') { 'tags' } else { 'moods' }
             $metadataArgs = @('--json') + $dbArgs + @($metadataCommand, '--limit', '200')
             $metadata = & cap @metadataArgs 2>$null | ConvertFrom-Json
+            $metadataPrefix = ConvertFrom-CapAstToken $wordToComplete
+            $tagPrefix = ''
+            if ($metadataKind -eq 'tag' -and $metadataPrefix.Contains(',')) {
+                $comma = $metadataPrefix.LastIndexOf(',')
+                $tagPrefix = $metadataPrefix.Substring(0, $comma + 1)
+                $metadataPrefix = $metadataPrefix.Substring($comma + 1).TrimStart()
+            }
             foreach ($item in @($metadata.data.items)) {
                 $name = if ($item.name) { [string]$item.name } elseif ($item.mood) { [string]$item.mood } else { '' }
-                if ($name -and $name.StartsWith($wordToComplete, [System.StringComparison]::OrdinalIgnoreCase)) {
-                    $completionText = ConvertTo-CapCompletionText $name
+                if ($name -and $name.StartsWith($metadataPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+                    $completionText = ConvertTo-CapCompletionText ($tagPrefix + $name)
                     [System.Management.Automation.CompletionResult]::new($completionText, $name, 'ParameterValue', "Capsule $metadataKind")
                 }
             }
@@ -245,6 +257,21 @@ $result = [System.Management.Automation.CommandCompletion]::CompleteInput('cap a
 $match = @($result.CompletionMatches | Where-Object { $_.ListItemText -eq 'red tag; &' })
 if ($match.Count -ne 1) { exit 51 }
 if ($match[0].CompletionText -ne "'red tag; &'") { exit 52 }
+$tagOption = 'cap add --ta'
+$options = [System.Management.Automation.CommandCompletion]::CompleteInput($tagOption, $tagOption.Length, $null)
+if (-not (@($options.CompletionMatches | Where-Object { $_.CompletionText -eq '--tags' }).Count -gt 0)) { exit 53 }
+foreach ($option in @('--tag','--tags')) {
+    $inputText = "cap add $option life,r"
+    $result = [System.Management.Automation.CommandCompletion]::CompleteInput($inputText, $inputText.Length, $null)
+    $match = @($result.CompletionMatches | Where-Object { $_.ListItemText -eq 'red tag; &' })
+    if ($match.Count -ne 1) { exit 54 }
+    if ($match[0].CompletionText -ne "'red tag; &'") { exit 55 }
+    $inputText = "cap add $option 'life,r'"
+    $result = [System.Management.Automation.CommandCompletion]::CompleteInput($inputText, $inputText.Length, $null)
+    $match = @($result.CompletionMatches | Where-Object { $_.ListItemText -eq 'red tag; &' })
+    if ($match.Count -ne 1) { exit 56 }
+    if ($match[0].CompletionText -ne "'life,red tag; &'") { exit 57 }
+}
 "#;
         std::fs::write(
             &script_path,
@@ -271,7 +298,9 @@ if ($match[0].CompletionText -ne "'red tag; &'") { exit 52 }
             .expect("PowerShell runtime");
         assert!(
             output.status.success(),
-            "PowerShell metadata completion check failed: {}",
+            "PowerShell metadata completion check failed ({}): {}\n{}",
+            output.status,
+            String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
         );
     }

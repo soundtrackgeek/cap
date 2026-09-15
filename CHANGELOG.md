@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0-dev.29 - 2026-09-15
+
+### Added
+
+- Comma-separated tags for `cap add --tags life,outdoors,gratitude,exercise`,
+  with repeatable `--tag`/`--tags` options and PowerShell completion for each tag.
+
 ## 0.2.0-dev.28 - 2026-09-14
 
 ### Added

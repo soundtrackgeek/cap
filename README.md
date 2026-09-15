@@ -29,6 +29,7 @@ cap garden
 cap recall
 cap theme set c64
 cap add --mood content --tag life -- 'A quiet evening outside.'
+cap add --mood good --tags life,outdoors,gratitude,exercise "Had a lovely walk"
 Get-Content -Raw .\today.md | cap
 cap add --json --capture-id walk-2026-09-14 -- 'A caller-retryable note'
 cap status --capture-id walk-2026-09-14
@@ -40,6 +41,12 @@ cap enrich <entry-uuid>
 cap --db .\capsule.db recent
 cap --db .\capsule.db search 'tag:work after:2026-01-01'
 ```
+
+`cap add --tags` accepts comma-separated tags. You can repeat or mix `--tags`
+and `--tag` (for example, `--tags life,outdoors --tag gratitude`). Both spellings
+split on commas; quote lists containing spaces, such as `--tags "life, fresh air"`.
+Saving trims whitespace, ignores empty tags, and merges duplicates without regard
+to case. Put metadata options before the entry text.
 
 - [SPEC.md](SPEC.md): behavior, command contract, shared data architecture,
   recovery, color-cli reuse, visual effects, accessibility and release criteria.

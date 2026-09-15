@@ -59,6 +59,7 @@ does not itself launch cloud sync.
 cap Had a lovely walk by the water
 cap 'Finally fixed that bug. Time for coffee!'
 cap add --mood content --tag life --tag outdoors -- 'A quiet evening outside.'
+cap add --mood good --tags life,outdoors,gratitude,exercise "Had a lovely walk"
 Get-Content -Raw .\today.md | cap
 cap add --file .\today.md
 ```
@@ -165,7 +166,8 @@ Input rules:
    for stdin or opens a DB.
 5. Reject whitespace-only input. Default maximum input is 1 MiB of UTF-8 bytes;
    stop reading at the limit and explain it. Larger import tooling is deferred.
-6. Metadata flags: `--mood`, repeatable `--tag`, `--title`, `--summary`, `--star`,
+6. Metadata flags: `--mood`, repeatable `--tag` (alias `--tags`, both accepting
+   comma-separated values), `--title`, `--summary`, `--star`,
    `--pin`, `--format markdown|plain`, and `--continue <uuid-or-number>`. Default
    format is Capsule's Markdown. Tags use its normalization. Hashtags or emoji in
    the text are not silently removed or converted to metadata.

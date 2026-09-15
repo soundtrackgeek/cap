@@ -116,6 +116,81 @@ fn add_commits_metadata_backup_and_durable_receipt() {
 }
 
 #[test]
+fn comma_separated_tags_save_individually_and_match_repeated_tags_on_retry() {
+    let fixture = Fixture::new();
+    let before_rows = fixture.row_count("entries").unwrap();
+    let mut saved_uuid = None;
+    for tag_args in [
+        vec!["--tags", "life,outdoors,gratitude,exercise"],
+        vec![
+            "--tag",
+            "life",
+            "--tag",
+            "outdoors",
+            "--tag",
+            "gratitude",
+            "--tag",
+            "exercise",
+        ],
+        vec![
+            "--tags",
+            " Life, outdoors,, ",
+            "--tag",
+            "gratitude",
+            "--tags",
+            "exercise,LIFE,",
+        ],
+    ] {
+        let output = fixture
+            .command()
+            .args([
+                "--json",
+                "--no-context",
+                "add",
+                "--capture-id",
+                "comma-tags",
+                "--mood",
+                "good",
+            ])
+            .args(tag_args)
+            .arg("Had a lovely walk")
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stdout)
+        );
+        let value = json_output(&output);
+        let uuid = value["data"]["entryUuid"].as_str().unwrap().to_string();
+        if let Some(expected) = &saved_uuid {
+            assert_eq!(&uuid, expected);
+        } else {
+            saved_uuid = Some(uuid.clone());
+        }
+        assert_eq!(fixture.row_count("entries").unwrap(), before_rows + 1);
+
+        let show = fixture
+            .command()
+            .args(["--json", "show", &uuid])
+            .output()
+            .unwrap();
+        assert!(show.status.success());
+        let entry = json_output(&show);
+        assert_eq!(entry["data"]["text"], "Had a lovely walk");
+        assert_eq!(entry["data"]["mood"], "good");
+        let mut tags: Vec<_> = entry["data"]["tags"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tag| tag["name"].as_str().unwrap())
+            .collect();
+        tags.sort();
+        assert_eq!(tags, ["exercise", "gratitude", "life", "outdoors"]);
+    }
+}
+
+#[test]
 fn explicit_capture_id_is_idempotent_and_conflicts_are_visible() {
     let fixture = Fixture::new();
     let first = fixture
