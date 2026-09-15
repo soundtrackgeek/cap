@@ -4,7 +4,7 @@ resolver = "2"
 
 [package]
 name = "cap"
-version = "0.2.0-dev.35"
+version = "0.2.0-dev.36"
 edition = "2021"
 rust-version = "1.95"
 description = "A small ceremony for everyday Capsule memories"

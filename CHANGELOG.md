@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.0-dev.36 - 2026-09-15
+
+### Fixed
+
+- Read commands use the available terminal width instead of wrapping at 40
+  columns. Text remains safely wrapped on narrow terminals in color and plain
+  output.
+- `today`, `recent`, and `search` show complete entry text and preserve paragraph
+  breaks instead of cutting the first line off after a 160-character preview.
+  Entries are separated by a blank line for readability.
+
 ## 0.2.0-dev.35 - 2026-09-15
 
 ### Fixed

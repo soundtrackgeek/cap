@@ -78,3 +78,66 @@ fn read_commands_keep_explicit_missing_database_authoritative() {
     assert!(!missing.exists());
     fixture.assert_snapshot_unchanged(&before).unwrap();
 }
+
+#[test]
+fn entry_lists_show_complete_multiline_text_without_changing_the_journal() {
+    let fixture = Fixture::from_profile(FixtureProfile::full());
+    let body = format!(
+        "{}End of the long first paragraph.\n\nSecond paragraph: Håvard, e\u{301}, 👨‍👩‍👧‍👦 and 界.\nFinal line.",
+        "A memory that needs more than a narrow preview. ".repeat(10)
+    );
+    let connection = rusqlite::Connection::open(&fixture.db).unwrap();
+    connection
+        .execute(
+            "UPDATE entries SET created_at = ?1 || printf(' %02d:00:00', id)",
+            [chrono::Local::now().format("%Y-%m-%d").to_string()],
+        )
+        .unwrap();
+    connection
+        .execute(
+            "UPDATE entries SET text = ?1, text_plain = ?1 WHERE uuid = 'entry_root'",
+            [&body],
+        )
+        .unwrap();
+    drop(connection);
+    let before = fixture.snapshot().unwrap();
+    let without_whitespace = |text: &str| {
+        text.chars()
+            .filter(|c| !c.is_whitespace())
+            .collect::<String>()
+    };
+    for args in [
+        vec!["today"],
+        vec!["recent"],
+        vec!["search", "tag:personal"],
+    ] {
+        for plain in [false, true] {
+            let mut command = fixture.command();
+            if plain {
+                command.arg("--plain");
+            }
+            let output = command.args(&args).output().unwrap();
+            assert!(
+                output.status.success(),
+                "{}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            let text = String::from_utf8(output.stdout).unwrap();
+            assert!(
+                without_whitespace(&text).contains(&without_whitespace(&body)),
+                "{args:?}: {text}"
+            );
+            assert!(text.contains("\n  \n  Second paragraph"), "{text}");
+            assert!(!text.contains('\x1b'));
+        }
+        let json = run(&fixture, &args, true);
+        let entry = json["data"]["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|entry| entry["uuid"] == "entry_root")
+            .unwrap();
+        assert_eq!(entry["textPlain"], body);
+    }
+    fixture.assert_snapshot_unchanged(&before).unwrap();
+}

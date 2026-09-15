@@ -54,6 +54,11 @@ Quick capture requires `cap add`. Unknown commands such as `cap test` report
 without saving an entry. Bare `cap` shows help, even with piped input; it does
 not start a draft or capture stdin. Use `cap write` explicitly for the editor.
 
+`cap today`, `cap recent`, and `cap search` show complete entry text, including
+paragraph breaks. Read output uses the available terminal width (with a one-cell
+margin) and wraps longer lines to fit. Use `--limit` and `--offset` to page through
+entries, or `cap show <id>` for an entry's full metadata and authored text.
+
 `cap add --tags` accepts comma-separated tags. You can repeat or mix `--tags`
 and `--tag` (for example, `--tags life,outdoors --tag gratitude`). Both spellings
 split on commas; quote lists containing spaces, such as `--tags "life, fresh air"`.

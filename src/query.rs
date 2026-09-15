@@ -166,29 +166,41 @@ pub fn doctor_data(global: &GlobalOptions) -> Result<(Value, Vec<String>), Strin
 /// never leak if a caller accidentally displays the field.
 pub fn human_text(text: &str, global: &GlobalOptions) -> Result<String, String> {
     let capabilities = TerminalCapabilities::detect();
-    let sanitized = sanitize_text(text);
-    let width = capabilities.compact_width();
     // Machine modes never display this field.  Keep the fallback plain and
     // avoid touching cap-local preferences so `--json doctor` remains useful
     // even when a presentation file is malformed.
     if global.json || global.quiet {
-        return Ok(layout_text(&sanitized, width, false)
-            .plain_lines()
-            .join("\n"));
+        return Ok(render_human_text(text, &capabilities, None));
     }
     let presentation = preferences::resolve_from_store(global, &capabilities)
         .map_err(|error| error.to_string())?;
-    match presentation.output {
-        ResolvedOutputMode::Human { color, .. } if color != ColorMode::Plain => Ok(render_text(
-            &sanitized,
-            width,
-            &presentation.theme.effect_config(false),
-            color,
-        )),
-        _ => Ok(layout_text(&sanitized, width, false)
-            .plain_lines()
-            .join("\n")),
+    Ok(render_human_text(text, &capabilities, Some(&presentation)))
+}
+
+fn render_human_text(
+    text: &str,
+    capabilities: &TerminalCapabilities,
+    presentation: Option<&preferences::EffectivePresentation>,
+) -> String {
+    let sanitized = sanitize_text(text);
+    // Reading uses the terminal's available columns, independently of the
+    // compact receipt/effect width. Leave one cell to avoid terminal autowrap.
+    let width = capabilities.width.saturating_sub(1).max(1);
+    if let Some(presentation) = presentation {
+        if let ResolvedOutputMode::Human { color, .. } = presentation.output {
+            if color != ColorMode::Plain {
+                return render_text(
+                    &sanitized,
+                    width,
+                    &presentation.theme.effect_config(false),
+                    color,
+                );
+            }
+        }
     }
+    layout_text(&sanitized, width, false)
+        .plain_lines()
+        .join("\n")
 }
 
 pub fn format_entries(page: &ReadPage<Entry>) -> String {
@@ -198,7 +210,7 @@ pub fn format_entries(page: &ReadPage<Entry>) -> String {
     let mut output = String::new();
     for (index, entry) in page.items.iter().enumerate() {
         if index > 0 {
-            output.push('\n');
+            output.push_str("\n\n");
         }
         let title = entry
             .title
@@ -215,12 +227,12 @@ pub fn format_entries(page: &ReadPage<Entry>) -> String {
             .unwrap_or_default();
         let _ = write!(
             output,
-            "#{id} {date} {title}{mood}\n  {snippet}",
+            "#{id} {date} {title}{mood}\n  {body}",
             id = entry.id,
             date = entry.created_at,
             title = title,
             mood = mood,
-            snippet = one_line_snippet(&entry.text_plain),
+            body = entry_body(&entry.text_plain),
         );
     }
     output
@@ -425,8 +437,13 @@ fn yes_no(value: bool) -> &'static str {
     }
 }
 
-fn one_line_snippet(value: &str) -> String {
-    compact_field(value, 160)
+fn entry_body(value: &str) -> String {
+    let sanitized = sanitize_text(value);
+    if sanitized.trim().is_empty() {
+        "(empty)".to_string()
+    } else {
+        sanitized.replace('\n', "\n  ")
+    }
 }
 
 /// Truncate one-line CLI fields by terminal cells while preserving grapheme
@@ -470,6 +487,38 @@ mod tests {
     use cap_effects::grapheme_width;
 
     #[test]
+    fn read_layout_uses_available_width_in_plain_color_and_machine_modes() {
+        let text = format!(
+            "{}\n\nSecond paragraph: e\u{301} 👨‍👩‍👧‍👦 界",
+            "readable text ".repeat(40)
+        );
+        for columns in [1, 2, 40, 80, 120, 240] {
+            let capabilities =
+                TerminalCapabilities::synthetic(true, columns, true, true, false, false, false);
+            for plain in [false, true] {
+                let global = GlobalOptions {
+                    plain,
+                    ..GlobalOptions::default()
+                };
+                let presentation = preferences::resolve_defaults(&global, &capabilities).unwrap();
+                for presentation in [None, Some(&presentation)] {
+                    let output = render_human_text(&text, &capabilities, presentation);
+                    let clean = sanitize_text(&output);
+                    let available = columns.saturating_sub(1).max(1);
+                    assert_eq!(grapheme_width(clean.lines().next().unwrap()), available);
+                    assert!(clean.lines().all(|line| grapheme_width(line) <= available));
+                    if available >= 2 {
+                        assert_eq!(clean.replace('\n', ""), text.replace('\n', ""));
+                        assert!(clean.contains("e\u{301}"));
+                        assert!(clean.contains("👨‍👩‍👧‍👦"));
+                        assert!(clean.contains('界'));
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn search_data_preserves_diagnostics_and_items_shape() {
         let response = SearchResponse {
             entries: Vec::new(),
@@ -488,18 +537,20 @@ mod tests {
     }
 
     #[test]
-    fn snippets_sanitize_terminal_controls() {
+    fn entry_bodies_sanitize_terminal_controls_and_preserve_paragraphs() {
         let value = "hello\x1b[31m world\x1b[0m";
-        assert_eq!(one_line_snippet(value), "hello world");
+        assert_eq!(entry_body(value), "hello world");
+        assert_eq!(entry_body("first\n\nlast"), "first\n  \n  last");
+        assert_eq!(entry_body(" \n\t"), "(empty)");
     }
 
     #[test]
-    fn snippets_keep_unicode_graphemes_and_bound_long_metadata() {
+    fn metadata_keeps_unicode_graphemes_and_bounds_long_fields() {
         let family = "👨‍👩‍👧‍👦";
         let value = format!("{}tail", family.repeat(100));
-        let snippet = one_line_snippet(&value);
+        let snippet = compact_field(&value, 96);
         assert!(snippet.ends_with("..."));
-        assert!(grapheme_width(&snippet) <= 160);
+        assert!(grapheme_width(&snippet) <= 96);
         assert!(snippet.trim_end_matches("...").ends_with(family));
 
         let metadata = "界".repeat(1_000);
