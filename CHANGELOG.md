@@ -9,6 +9,8 @@
   state. Quick capture requires `cap add`.
 - Bare `cap` now shows help instead of opening the writer or capturing piped
   input. Use `cap add --stdin` for pipes and `cap write` for the editor.
+- Windows delivery smoke checks preserve single-argument commands when forwarding
+  them to a fresh PowerShell session.
 
 ## 0.2.0-dev.32 - 2026-09-15
 

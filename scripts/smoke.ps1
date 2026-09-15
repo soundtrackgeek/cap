@@ -111,10 +111,10 @@ function Invoke-IsolatedCap {
         [Parameter(Mandatory = $true)] [hashtable]$Environment
     )
 
-    $payload = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes(($Arguments | ConvertTo-Json -Compress)))
+    $payload = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes((ConvertTo-Json -InputObject $Arguments -Compress)))
     $Environment['CAP_SMOKE_ARGS_B64'] = $payload
     $script = @'
-$arguments = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($env:CAP_SMOKE_ARGS_B64)) | ConvertFrom-Json
+$arguments = @([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($env:CAP_SMOKE_ARGS_B64)) | ConvertFrom-Json)
 $command = Get-Command cap.exe -ErrorAction Stop
 & $command.Source @arguments
 exit $LASTEXITCODE
