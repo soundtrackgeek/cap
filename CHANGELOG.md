@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.0-dev.37 - 2026-09-15
+
+### Added
+
+- Windows release ZIPs include `install.bat`: extract all files and double-click
+  it to install or update cap for the current user, without administrator rights.
+  The launcher uses the existing verified PowerShell installer, keeps success
+  or error details visible, and explains when the archive needs extracting.
+
+### Fixed
+
+- HTTP retry test servers use blocking reads with their existing timeout on
+  Windows, avoiding intermittent socket errors while request headers arrive.
+
 ## 0.2.0-dev.36 - 2026-09-15
 
 ### Fixed

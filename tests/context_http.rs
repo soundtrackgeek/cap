@@ -41,6 +41,9 @@ fn accept(listener: &TcpListener) -> TcpStream {
             Err(error) => panic!("{error}"),
         }
     };
+    // Windows accepts inherit the listener's nonblocking mode. Read the test
+    // request with the bounded blocking timeout below, even if headers arrive later.
+    stream.set_nonblocking(false).unwrap();
     stream
         .set_read_timeout(Some(Duration::from_secs(3)))
         .unwrap();

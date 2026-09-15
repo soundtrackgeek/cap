@@ -1,8 +1,8 @@
 # Windows delivery
 
 `cap` is delivered as a native, per-user Windows executable. A packaged
-archive contains `bin\cap.exe`, a SHA-256 manifest, the install and uninstall
-scripts, `NOTICE.txt`, and the source provenance documents.
+archive contains `bin\cap.exe`, a SHA-256 manifest, `install.bat`, the PowerShell
+install and uninstall scripts, `NOTICE.txt`, and the source provenance documents.
 
 ## Build a local archive
 
@@ -54,8 +54,22 @@ stages and verifies the candidate first and restores the old executable and
 metadata if replacement fails. No journal is opened. Existing installations
 older than 0.2.0-dev.32 need the archive installer once to gain `cap update`.
 
-Run `install.ps1` from the extracted archive (or pass `-SourcePath` to a
-release `cap.exe`):
+Download the Windows ZIP from the
+[releases page](https://github.com/soundtrackgeek/cap/releases), choose **Extract
+All**, and double-click **install.bat** in the extracted folder. The window stays
+open so you can read the result or any error before pressing a key to close it.
+Open a new terminal and run `cap --help` after installation. Repeating these
+steps with a newer release updates an existing cap installation.
+
+The batch launcher runs the bundled `install.ps1` with Windows PowerShell,
+without loading a profile. It uses an execution-policy override for that process
+only; it does not change your saved PowerShell policy. The same checksum,
+collision, rollback, and PATH checks apply as when running `install.ps1` directly.
+Launcher arguments are forwarded to the PowerShell installer, for example
+`install.bat -InstallRoot "D:\Tools\cap"`.
+
+For PowerShell options, run `install.ps1` from the extracted archive (or pass
+`-SourcePath` to a release `cap.exe`):
 
 ```powershell
 .\install.ps1

@@ -238,6 +238,7 @@ try {
     [IO.File]::WriteAllText((Join-Path $tempRoot '.cap-package-owned'), '')
     try {
         Copy-Literal -Source $binaryPath -Destination (Join-Path $staging 'bin\cap.exe')
+        Copy-Literal -Source (Join-Path $repoRoot 'scripts\install.bat') -Destination (Join-Path $staging 'install.bat')
         Copy-Literal -Source (Join-Path $repoRoot 'scripts\install.ps1') -Destination (Join-Path $staging 'install.ps1')
         Copy-Literal -Source (Join-Path $repoRoot 'scripts\uninstall.ps1') -Destination (Join-Path $staging 'uninstall.ps1')
         Copy-Literal -Source (Join-Path $repoRoot 'README.md') -Destination (Join-Path $staging 'README.md')

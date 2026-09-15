@@ -22,6 +22,13 @@ it per-user without requiring administrator rights. Capture uses Capsule's
 active database, location settings and weather, with a little color-cli
 ceremony when it saves.
 
+To install on Windows, download the ZIP from the
+[releases page](https://github.com/soundtrackgeek/cap/releases), choose **Extract
+All**, and double-click **install.bat** in the extracted folder. It installs
+cap for your user account and adds it to PATH without administrator rights.
+Open a new terminal and run `cap --help`. Double-click the installer from a
+newer release to update an existing cap installation.
+
 The CLI features are integrated on `codex/cap-integration`. Executable capture,
 recovery, writer input and delivery are checked with disposable synthetic journals.
 Actual Windows Terminal visual review and native desktop coexistence remain
