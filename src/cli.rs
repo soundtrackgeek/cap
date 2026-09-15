@@ -88,6 +88,14 @@ pub enum Command {
     Context,
     /// Inspect paths, schema and terminal capabilities read-only.
     Doctor,
+    /// Update cap from the latest version on the Git repository.
+    Update {
+        /// Check for a new version without installing it.
+        #[arg(long)]
+        check: bool,
+    },
+    #[command(name = "__check-update", hide = true)]
+    CheckUpdate,
     /// Reconcile a capture's saved/pending state.
     Status {
         #[arg(long)]
@@ -250,6 +258,8 @@ impl Command {
             Self::Moods(_) => "moods",
             Self::Context => "context",
             Self::Doctor => "doctor",
+            Self::Update { .. } => "update",
+            Self::CheckUpdate => "__check-update",
             Self::Status { .. } => "status",
             Self::Recover { .. } => "recover",
             Self::Enrich { .. } => "enrich",

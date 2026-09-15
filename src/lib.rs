@@ -14,4 +14,5 @@ pub mod recovery;
 #[cfg(feature = "test-hooks")]
 pub(crate) mod test_hooks;
 pub mod ui;
+pub mod update;
 pub mod writer;

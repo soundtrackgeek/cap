@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.0-dev.32 - 2026-09-15
+
+### Added
+
+- `cap update` installs newer versions from the Git repository, preferring
+  verified Windows release downloads and falling back to an exact-commit source
+  build. `cap update --check` checks without installing.
+- Friendly magenta update notices after interactive journal commands, with
+  cached background checks and respect for offline, quiet, JSON, plain, and
+  no-color output. Saving never waits for the update network check.
+- Required tagged GitHub releases with Windows archives and SHA-256 files for
+  every version bump, documented in `AGENTS.md`.
+
 ## 0.2.0-dev.31 - 2026-09-15
 
 ### Fixed

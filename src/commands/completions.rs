@@ -9,7 +9,7 @@ use serde_json::json;
 /// branch is guarded by `CAP_COMPLETIONS_METADATA=1` and invokes only the
 /// read-only `cap --json tags` command.
 pub const POWERSHELL_COMPLETION: &str = r#"# cap PowerShell completions (generated; pipe to a file and review before opting in)
-$capCommands = @('add','write','show','today','recent','search','tags','moods','context','doctor','status','recover','enrich','theme','fx','config','completions','recall','on-this-day','calendar','stats','garden')
+$capCommands = @('add','write','show','today','recent','search','tags','moods','context','doctor','update','status','recover','enrich','theme','fx','config','completions','recall','on-this-day','calendar','stats','garden')
 $capGlobalOptions = @('--db','--json','--quiet','--plain','--color','--motion','--theme','--offline','--no-context','--dry-run','--help','--version')
 $capOptionValues = @('--db','--color','--motion','--theme','--tag','--tags','--mood')
 $capOptionCandidates = @{
@@ -83,6 +83,7 @@ Register-ArgumentCompleter -Native -CommandName cap -ScriptBlock {
     } elseif ($wordToComplete.StartsWith('-')) {
         $candidates = $capGlobalOptions
         if ($firstCommand -eq 'add') { $candidates += @('--tag','--tags','--mood') }
+        if ($firstCommand -eq 'update') { $candidates += @('--check') }
     } elseif (-not $firstCommand) {
         $candidates = $capCommands
     } else {

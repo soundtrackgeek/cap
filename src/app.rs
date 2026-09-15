@@ -77,6 +77,13 @@ pub fn execute(cli: &Cli) -> Result<CommandOutput, AppError> {
         Some(Command::Moods(args)) => crate::commands::moods::run(args, &cli.global),
         Some(Command::Context) => crate::commands::context::run(&cli.global),
         Some(Command::Doctor) => crate::commands::doctor::run(&cli.global),
+        Some(Command::Update { check }) => crate::update::run(*check, &cli.global),
+        Some(Command::CheckUpdate) => {
+            if !cli.global.offline {
+                crate::update::refresh_background();
+            }
+            Ok(CommandOutput::new(serde_json::json!({}), ""))
+        }
         Some(command @ Command::Recall { .. }) => {
             crate::commands::recall::run(command, &cli.global)
         }

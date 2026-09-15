@@ -32,6 +32,8 @@ jobs:
         run: cargo run --locked --example core_process_probe
       - name: Verify CLI crash and recovery hooks on synthetic fixtures
         run: cargo test --locked --features test-hooks --test capture_process
+      - name: Verify Windows self-update and corrupt-download protection
+        run: cargo test --locked --features test-hooks --test update_process
       - name: Build standalone release CLI
         run: cargo build --release --locked --bin cap --example fixture_lab
       - name: Verify Windows installation rollback and PATH ownership

@@ -33,6 +33,8 @@ cap write
 cap garden
 cap recall
 cap theme set c64
+cap update                 # install a newer version from the Git repository
+cap update --check         # check without installing
 cap add --mood content --tag life -- 'A quiet evening outside.'
 cap add --mood good --tags life,outdoors,gratitude,exercise "Had a lovely walk"
 Get-Content -Raw .\today.md | cap
@@ -52,6 +54,22 @@ and `--tag` (for example, `--tags life,outdoors --tag gratitude`). Both spelling
 split on commas; quote lists containing spaces, such as `--tags "life, fresh air"`.
 Saving trims whitespace, ignores empty tags, and merges duplicates without regard
 to case. Put metadata options before the entry text.
+
+`cap update` checks the version on the repository's `master` branch and updates
+the executable you ran. On Windows x64 it downloads the version's GitHub release
+ZIP, verifies its SHA-256 and executable provenance, and installs it in place.
+If that version has no published release (or no package for your platform), it
+builds the exact source commit with Cargo; that fallback needs Rust, Git, and
+native build tools on PATH. It never downgrades an equal or newer installed version.
+
+After successful interactive journal commands such as `cap add`, a friendly
+magenta notice offers `cap update` when a newer version is known. Checks run in
+the background at most once a day; the first check's result appears on a later
+command. Network failures stay quiet and retry after an hour. `--offline`,
+`--quiet`, `--json`, dry runs, CI, and redirected output skip automatic checks
+and notices. `--plain`, `--color never`, and `NO_COLOR` keep the notice uncolored.
+The cache is `update-check.json` in cap's configuration directory. An explicit
+`cap update --check` always checks online; `--offline update` reports an error.
 
 Backup creation preserves existing orphaned metadata in older Capsule journals.
 It verifies SQLite integrity and compares foreign-key diagnostics with the same

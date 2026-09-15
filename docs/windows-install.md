@@ -29,6 +29,19 @@ stamp.
 
 ## Install and update
 
+Once cap is installed, run `cap update` to install a newer version from the
+repository's `master` branch, or `cap update --check` to check without installing.
+Windows x64 uses the `v<version>` GitHub release ZIP and verifies the archive and
+executable hashes before replacement. Development prereleases are supported.
+The source-build fallback requires Cargo, Git, and native build tools; its cache
+is kept in `update-build` under cap's configuration directory.
+
+The updater replaces the executable you invoked, maintains the managed install
+receipt/checksums/provenance, and preserves PATH and completion ownership. It
+stages and verifies the candidate first and restores the old executable and
+metadata if replacement fails. No journal is opened. Existing installations
+older than 0.2.0-dev.32 need the archive installer once to gain `cap update`.
+
 Run `install.ps1` from the extracted archive (or pass `-SourcePath` to a
 release `cap.exe`):
 

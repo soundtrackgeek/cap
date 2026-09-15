@@ -54,6 +54,7 @@ fn run() -> i32 {
                         cap_effects::sanitize_text(&warning)
                     );
                 }
+                cap::update::after_success(&cli);
             }
             0
         }
