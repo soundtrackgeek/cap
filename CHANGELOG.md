@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.0-dev.38 - 2026-09-15
+
+### Changed
+
+- The double-click Windows installer shows the path of an existing `cap.exe`
+  and asks before replacing it, including copies without an install receipt or
+  with a changed binary hash. Enter defaults to No and leaves files and PATH
+  unchanged. Cancellation is displayed separately from installation failure.
+- When the default installation is absent, the launcher offers to update an
+  existing `cap.exe` on PATH in place. Managed installations retain their receipt
+  and PATH ownership; standalone copies keep their surrounding files untouched.
+  PowerShell users can opt into prompts with `-PromptForReplace` or use `-Force`
+  for unattended replacement.
+
 ## 0.2.0-dev.37 - 2026-09-15
 
 ### Added

@@ -59,7 +59,15 @@ Download the Windows ZIP from the
 All**, and double-click **install.bat** in the extracted folder. The window stays
 open so you can read the result or any error before pressing a key to close it.
 Open a new terminal and run `cap --help` after installation. Repeating these
-steps with a newer release updates an existing cap installation.
+steps with a newer release asks before updating an existing cap installation.
+The prompt shows the exact executable path. Type `y` or `yes` to replace it;
+`n`, Enter, or any other answer cancels without changing files or PATH.
+
+The prompt also handles an executable with no install receipt or a changed
+binary hash. If the default installation is absent, the launcher checks PATH
+and offers to update the first existing `cap.exe` in place. A managed install
+keeps its receipt and PATH ownership; a standalone copy gets only its executable
+replaced. An explicit `-InstallRoot` always selects that destination.
 
 The batch launcher runs the bundled `install.ps1` with Windows PowerShell,
 without loading a profile. It uses an execution-policy override for that process
@@ -73,6 +81,8 @@ For PowerShell options, run `install.ps1` from the extracted archive (or pass
 
 ```powershell
 .\install.ps1
+# Ask before replacing an existing executable, as install.bat does:
+.\install.ps1 -PromptForReplace
 # Optional explicit source and destination:
 .\install.ps1 -SourcePath 'D:\Builds\cap.exe' -InstallRoot "$env:LOCALAPPDATA\Programs\cap"
 ```
@@ -82,8 +92,11 @@ administrator prompt is required. The installer verifies the package
 checksum when `checksums.sha256` is present, stages the executable, checks for
 an in-use/running prior binary, and publishes an install receipt at
 `.cap-install.json`. Re-running the script updates only a prior cap install.
-An unrelated existing `cap.exe` is a collision and requires an explicit
-`-Force` after review.
+Without `-PromptForReplace`, an unrecognized existing `cap.exe` is a collision
+and requires an explicit `-Force` after review. `-Force` also skips replacement
+prompts for unattended use. Confirmation permits replacing the displayed
+executable; checksum, file-in-use, rollback, and unrelated-metadata protections
+remain in effect.
 These scripts deliver only `cap.exe` and installer metadata; they never install
 or update the Capsule desktop app or any Capsule journal, recovery, settings,
 media, sync, or backup data.

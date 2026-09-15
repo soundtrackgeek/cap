@@ -45,7 +45,10 @@ $marker = Join-Path $tempRoot '.cap-delivery-tests-owned'
 $holderStream = $null
 $receiptHolderStream = $null
 $lateSourceHolder = $null
+$originalProcessPath = $env:PATH
 try {
+    # Keep a real installed cap from colliding with the disposable install roots.
+    $env:PATH = Join-Path $env:SystemRoot 'System32'
     $sourceDirectory = Join-Path $tempRoot 'source with spaces'
     [IO.Directory]::CreateDirectory($sourceDirectory) | Out-Null
     $source = Join-Path $sourceDirectory 'cap.exe'
@@ -183,6 +186,7 @@ try {
     [pscustomobject]@{ ok = $true; cases = @('spaces', 'checksum', 'receipt-lock-rollback', 'metadata-collision', 'late-source-rollback', 'completion-profile-failure', 'collision', 'running-binary', 'locked-uninstall', 'path-preservation', 'uninstall-data-safety') } | ConvertTo-Json -Depth 4
 }
 finally {
+    $env:PATH = $originalProcessPath
     if ($null -ne $holderStream) { $holderStream.Dispose() }
     if ($null -ne $receiptHolderStream) { $receiptHolderStream.Dispose() }
     if ($null -ne $lateSourceHolder) { $lateSourceHolder.Dispose() }

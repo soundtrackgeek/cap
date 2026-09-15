@@ -9,9 +9,10 @@ if not exist "%~dp0bin\cap.exe" goto missing_package
 if not exist "%~dp0checksums.sha256" goto missing_package
 if not exist "%~dp0manifest.json" goto missing_package
 
-"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0install.ps1" -SourcePath "%~dp0bin\cap.exe" -PackageRoot "%~dp0." %*
+"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%~dp0install.ps1" -SourcePath "%~dp0bin\cap.exe" -PackageRoot "%~dp0." -PromptForReplace %*
 set "installExitCode=%errorlevel%"
 echo.
+if "%installExitCode%"=="2" goto done
 if not "%installExitCode%"=="0" goto install_failed
 echo Installation complete. Open a new terminal and run: cap --help
 goto done

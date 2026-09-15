@@ -10,6 +10,7 @@ param(
     [string]$CompletionProfilePath,
     [switch]$SkipPath,
     [switch]$ActivateCompletions,
+    [switch]$PromptForReplace,
     [switch]$Force,
     [switch]$PassThru
 )
@@ -348,6 +349,48 @@ function Get-ExistingCapCommandPaths {
     return @($paths | Select-Object -Unique)
 }
 
+function Confirm-ExecutableReplacement {
+    param([string]$Path)
+
+    [Console]::WriteLine("An existing cap.exe was found at: $Path")
+    [Console]::Write('Replace this cap.exe with the packaged version? [y/N]: ')
+    $answer = [Console]::ReadLine()
+    if ($null -eq $answer -or $answer.Trim() -notmatch '^(?i:y|yes)$') {
+        [Console]::WriteLine('Installation cancelled. The existing installation was left unchanged.')
+        exit 2
+    }
+}
+
+function Replace-StandaloneExecutable {
+    param([string]$Source, [string]$Destination, [string]$SourceHash)
+
+    # A manually installed PATH executable has no managed install directory.
+    # Replace that exact file without adopting its directory or changing PATH.
+    Assert-NoReparsePath $Destination
+    Test-FileAvailableForReplacement $Destination
+    $previousHash = Get-Sha256 $Destination
+    if ($WhatIfPreference) { return }
+    Confirm-ExecutableReplacement $Destination
+    $temporary = "$Destination.tmp.$([guid]::NewGuid().ToString('N'))"
+    $backup = "$Destination.previous.$([guid]::NewGuid().ToString('N'))"
+    try {
+        Copy-Item -LiteralPath $Source -Destination $temporary
+        if ((Get-Sha256 $temporary) -ine $SourceHash) { throw 'The source executable changed; install was aborted.' }
+        Test-FileAvailableForReplacement $Destination
+        if ((Get-Sha256 $Destination) -ine $previousHash) { throw 'The existing cap.exe changed after confirmation. Run the installer again.' }
+        [IO.File]::Replace($temporary, $Destination, $backup, $true)
+        try { Remove-Item -LiteralPath $backup -Force }
+        catch { Write-Warning "cap was updated, but its previous binary remains at $backup." }
+    }
+    finally {
+        if (Test-Path -LiteralPath $temporary -PathType Leaf) { Remove-Item -LiteralPath $temporary -Force }
+    }
+    if ($PassThru) {
+        [pscustomobject]@{ ok = $true; action = 'updated'; binaryPath = $Destination; sha256 = $SourceHash; pathUpdated = $false; receiptPath = $null } | ConvertTo-Json
+    }
+    else { Write-Output "cap updated at $Destination (SHA-256 $SourceHash)" }
+}
+
 function Copy-PackageFile {
     param(
         [Parameter(Mandatory = $true)] [string]$Source,
@@ -427,11 +470,51 @@ if ([string]::IsNullOrWhiteSpace($SourcePath)) {
     }
 }
 $source = ConvertTo-AbsolutePath $SourcePath -MustExist
+$package = if ([string]::IsNullOrWhiteSpace($PackageRoot)) { Get-PackageRootForSource $source } else { ConvertTo-AbsolutePath $PackageRoot }
+if ($null -ne $package -and -not (Test-Path -LiteralPath $package -PathType Container)) {
+    throw "Package root not found: $package"
+}
+if ([string]::IsNullOrWhiteSpace($ChecksumPath) -and $null -ne $package) {
+    $candidateChecksum = Join-Path $package 'checksums.sha256'
+    if (Test-Path -LiteralPath $candidateChecksum -PathType Leaf) {
+        $ChecksumPath = $candidateChecksum
+    }
+}
+$expectedHash = $null
+if (-not [string]::IsNullOrWhiteSpace($ChecksumPath)) {
+    $checksumAbsolute = ConvertTo-AbsolutePath $ChecksumPath -MustExist
+    $expectedHash = Read-ExpectedSha256 -Path $checksumAbsolute -FileName 'cap.exe'
+}
+$sourceHash = Get-Sha256 $source
+if ($null -ne $expectedHash -and $sourceHash -ine $expectedHash) {
+    throw "Source SHA-256 mismatch. Expected $expectedHash, got $sourceHash."
+}
+
 if ([string]::IsNullOrWhiteSpace($InstallRoot)) {
     if ([string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)) {
         throw 'LOCALAPPDATA is not set. Pass -InstallRoot explicitly for a per-user install.'
     }
     $InstallRoot = Join-Path $env:LOCALAPPDATA 'Programs\cap'
+    if ($PromptForReplace -and -not $Force -and -not (Test-Path -LiteralPath (Join-Path $InstallRoot 'bin\cap.exe'))) {
+        $existingCommand = Get-ExistingCapCommandPaths | Where-Object { $_ -ine $source -and [IO.Path]::GetFileName($_) -ieq 'cap.exe' } | Select-Object -First 1
+        if ($null -ne $existingCommand) {
+            $existingBin = [IO.Path]::GetDirectoryName($existingCommand)
+            $existingRoot = [IO.Path]::GetDirectoryName($existingBin)
+            $managedReceipt = if ([IO.Path]::GetFileName($existingBin) -ieq 'bin') { Get-Receipt (Join-Path $existingRoot '.cap-install.json') } else { $null }
+            if ($null -ne $managedReceipt) {
+                if ((Get-PathKey ([string]$managedReceipt.binaryPath)) -ine $existingCommand -or
+                    (Get-PathKey ([string]$managedReceipt.installRoot)) -ine $existingRoot) {
+                    throw "The existing cap receipt does not match $existingCommand."
+                }
+                $InstallRoot = $existingRoot
+            }
+            else {
+                if ($ActivateCompletions) { throw 'Completion activation requires a managed installation. Use -InstallRoot to choose one.' }
+                Replace-StandaloneExecutable -Source $source -Destination $existingCommand -SourceHash $sourceHash
+                return
+            }
+        }
+    }
 }
 $root = Assert-SafeInstallRoot $InstallRoot
 Assert-NoReparsePath $root
@@ -457,7 +540,15 @@ if ((Get-PathKey $source) -ieq $destination) {
 
 $existingReceipt = Get-Receipt $receiptPath
 $destinationExists = Test-Path -LiteralPath $destination -PathType Leaf
-if ($destinationExists -and $null -eq $existingReceipt -and -not $Force) {
+$replacementApproved = $false
+$approvedBinaryHash = $null
+if ($destinationExists -and $PromptForReplace -and -not $Force -and -not $WhatIfPreference) {
+    Test-FileAvailableForReplacement $destination
+    $approvedBinaryHash = Get-Sha256 $destination
+    Confirm-ExecutableReplacement $destination
+    $replacementApproved = $true
+}
+if ($destinationExists -and $null -eq $existingReceipt -and -not $Force -and -not $replacementApproved) {
     throw "An existing cap.exe was found without a cap install receipt: $destination. Use -Force only after reviewing it."
 }
 
@@ -518,7 +609,7 @@ function Remove-EmptyInstallDirectories {
 if ($destinationExists) {
     Assert-FileDestination $destination
 }
-if ($destinationExists -and $null -ne $existingReceipt -and -not $Force -and -not [string]::IsNullOrWhiteSpace([string]$existingReceipt.binarySha256)) {
+if ($destinationExists -and $null -ne $existingReceipt -and -not $Force -and -not $replacementApproved -and -not [string]::IsNullOrWhiteSpace([string]$existingReceipt.binarySha256)) {
     $currentBinaryHash = Get-Sha256 $destination
     if ($currentBinaryHash -ine [string]$existingReceipt.binarySha256) {
         throw "The existing cap.exe does not match its install receipt. Use -Force only after reviewing the replacement."
@@ -530,26 +621,6 @@ if (-not $destinationExists -and -not $Force) {
             throw "A different cap command already resolves at $existingCommand. Use -Force only after reviewing the collision."
         }
     }
-}
-
-$package = if ([string]::IsNullOrWhiteSpace($PackageRoot)) { Get-PackageRootForSource $source } else { ConvertTo-AbsolutePath $PackageRoot }
-if ($null -ne $package -and -not (Test-Path -LiteralPath $package -PathType Container)) {
-    throw "Package root not found: $package"
-}
-if ([string]::IsNullOrWhiteSpace($ChecksumPath) -and $null -ne $package) {
-    $candidateChecksum = Join-Path $package 'checksums.sha256'
-    if (Test-Path -LiteralPath $candidateChecksum -PathType Leaf) {
-        $ChecksumPath = $candidateChecksum
-    }
-}
-$expectedHash = $null
-if (-not [string]::IsNullOrWhiteSpace($ChecksumPath)) {
-    $checksumAbsolute = ConvertTo-AbsolutePath $ChecksumPath -MustExist
-    $expectedHash = Read-ExpectedSha256 -Path $checksumAbsolute -FileName 'cap.exe'
-}
-$sourceHash = Get-Sha256 $source
-if ($null -ne $expectedHash -and $sourceHash -ine $expectedHash) {
-    throw "Source SHA-256 mismatch. Expected $expectedHash, got $sourceHash."
 }
 
 $rootExistedBefore = Test-Path -LiteralPath $root -PathType Container
@@ -657,6 +728,9 @@ try {
         throw 'The staged executable hash changed while copying; install was aborted.'
     }
     if ($destinationExists) {
+        if ($replacementApproved -and (Get-Sha256 $destination) -ine $approvedBinaryHash) {
+            throw 'The existing cap.exe changed after confirmation. Run the installer again.'
+        }
         $backup = "$destination.previous.$([guid]::NewGuid().ToString('N'))"
         Assert-UnderRoot $backup $root | Out-Null
         [IO.File]::Move($destination, $backup)

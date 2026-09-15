@@ -26,8 +26,9 @@ To install on Windows, download the ZIP from the
 [releases page](https://github.com/soundtrackgeek/cap/releases), choose **Extract
 All**, and double-click **install.bat** in the extracted folder. It installs
 cap for your user account and adds it to PATH without administrator rights.
-Open a new terminal and run `cap --help`. Double-click the installer from a
-newer release to update an existing cap installation.
+Open a new terminal and run `cap --help`. When cap is already installed, the
+double-click installer shows its path and asks whether to replace it. Type `y`
+to update, or press Enter to cancel without changing the existing installation.
 
 The CLI features are integrated on `codex/cap-integration`. Executable capture,
 recovery, writer input and delivery are checked with disposable synthetic journals.
