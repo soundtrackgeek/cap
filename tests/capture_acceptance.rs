@@ -297,9 +297,131 @@ fn preflight_errors_and_failed_backup_never_claim_a_save() {
         5,
     );
     assert_ne!(backup["data"]["saveState"], "committed");
+    let message = backup["error"]["message"].as_str().unwrap();
+    assert!(message.contains("failed to create"), "{message}");
+    assert!(message.contains("backup-target-file"), "{message}");
+    assert!(message.contains("Entry was not saved"), "{message}");
+    assert!(
+        message.contains("cap recover retry blocked-backup"),
+        "{message}"
+    );
     fixture.assert_snapshot_unchanged(&before).unwrap();
     let pending = saved(&fixture, &["recover", "show", "blocked-backup"]);
     assert_ne!(pending["data"]["saveState"], "committed");
+}
+
+#[test]
+fn recovery_preserves_existing_orphan_metadata_in_verified_backup() {
+    let fixture = Fixture::new();
+    let db = rusqlite::Connection::open(&fixture.db).unwrap();
+    db.execute_batch(
+        "PRAGMA foreign_keys=OFF;
+         INSERT INTO plugin_entry_locations
+             (entry_uuid, latitude, longitude, created_at)
+             VALUES ('deleted-entry', 0, 0, '2026-09-15');
+         INSERT INTO plugin_media_assets
+             (hash, mime_type, bytes, width, height, storage_backend, storage_key, created_at)
+             VALUES ('synthetic-orphan', 'image/png', 1, 1, 1, 'local', 'synthetic.png', '2026-09-15');
+         INSERT INTO plugin_entry_media
+             (entry_uuid, media_id, created_at)
+             SELECT 'deleted-entry', id, '2026-09-15' FROM plugin_media_assets LIMIT 1;",
+    )
+    .unwrap();
+    let violations = |db: &rusqlite::Connection| {
+        let mut statement = db.prepare("PRAGMA foreign_key_check").unwrap();
+        statement
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, Option<i64>>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, i64>(3)?,
+                ))
+            })
+            .unwrap()
+            .collect::<rusqlite::Result<Vec<_>>>()
+            .unwrap()
+    };
+    let original_violations = violations(&db);
+    assert_eq!(original_violations.len(), 2);
+    let original_count: i64 = db
+        .query_row("SELECT COUNT(*) FROM entries", [], |row| row.get(0))
+        .unwrap();
+    let text =
+        "Created a new version of the Capsule CLI tool. Hopefully it will get ne writing again.";
+    let args = [
+        "add",
+        "--capture-id",
+        "orphan-metadata",
+        "--mood",
+        "ok",
+        "--tags",
+        "capsule,writing,cli",
+        text,
+    ];
+    fs::remove_dir(fixture.backup_dir()).unwrap();
+    fs::write(fixture.backup_dir(), "synthetic backup blocker").unwrap();
+    let failure = envelope(
+        command(&fixture)
+            .args(["--json", "--no-context"])
+            .args(args)
+            .output()
+            .unwrap(),
+        5,
+    );
+    assert_eq!(failure["data"]["saveState"], "not_committed");
+    assert_eq!(
+        db.query_row("SELECT COUNT(*) FROM entries", [], |row| row
+            .get::<_, i64>(0))
+            .unwrap(),
+        original_count
+    );
+    fs::remove_file(fixture.backup_dir()).unwrap();
+    fs::create_dir(fixture.backup_dir()).unwrap();
+    let result = saved(&fixture, &["recover", "retry", "orphan-metadata"]);
+    let entry = saved(
+        &fixture,
+        &["show", result["data"]["entryUuid"].as_str().unwrap()],
+    );
+    assert_eq!(entry["data"]["text"], text);
+    assert_eq!(entry["data"]["mood"], "ok");
+    assert_eq!(
+        entry["data"]["tags"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tag| tag["name"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        ["capsule", "cli", "writing"]
+    );
+    assert_eq!(violations(&db), original_violations);
+    let backup = rusqlite::Connection::open_with_flags(
+        result["data"]["backup"]["path"].as_str().unwrap(),
+        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
+    )
+    .unwrap();
+    assert_eq!(violations(&backup), original_violations);
+    assert_eq!(
+        backup
+            .query_row("SELECT COUNT(*) FROM entries", [], |row| row
+                .get::<_, i64>(0))
+            .unwrap(),
+        original_count
+    );
+    assert_eq!(
+        backup
+            .query_row("PRAGMA integrity_check", [], |row| row.get::<_, String>(0))
+            .unwrap(),
+        "ok"
+    );
+    let retry = saved(&fixture, &args);
+    assert_eq!(retry["data"]["entryUuid"], result["data"]["entryUuid"]);
+    assert_eq!(
+        db.query_row("SELECT COUNT(*) FROM entries", [], |row| row
+            .get::<_, i64>(0))
+            .unwrap(),
+        original_count + 1
+    );
 }
 
 #[test]

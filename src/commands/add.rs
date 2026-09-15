@@ -943,7 +943,15 @@ fn handle_capture_error(
         CaptureErrorCode::CommitUnknown => ("COMMIT_UNKNOWN", 6),
         CaptureErrorCode::CommittedReceiptUnavailable => ("COMMIT_UNKNOWN", 6),
     };
-    let mut app_error = AppError::new(code, error.message, exit);
+    let message = if error.code == CaptureErrorCode::BackupFailed {
+        format!(
+            "{}. Entry was not saved. Retry with: cap recover retry {}",
+            error.message, record.capture_id
+        )
+    } else {
+        error.message
+    };
+    let mut app_error = AppError::new(code, message, exit);
     app_error.data = Some(json!({
         "captureId": record.capture_id,
         "saveState": "not_committed",

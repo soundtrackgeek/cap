@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0-dev.30 - 2026-09-15
+
+### Fixed
+
+- Backup verification no longer blocks capture because of existing orphaned
+  location/media metadata. The shared core compares foreign-key diagnostics
+  against the same source snapshot and retains SQLite integrity checks.
+- Backup failures show their underlying cause, state that the entry was not
+  saved, and provide the command to retry its retained recovery record.
+
 ## 0.2.0-dev.29 - 2026-09-15
 
 ### Added

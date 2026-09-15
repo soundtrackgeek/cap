@@ -48,6 +48,13 @@ split on commas; quote lists containing spaces, such as `--tags "life, fresh air
 Saving trims whitespace, ignores empty tags, and merges duplicates without regard
 to case. Put metadata options before the entry text.
 
+Backup creation preserves existing orphaned metadata in older Capsule journals.
+It verifies SQLite integrity and compares foreign-key diagnostics with the same
+source snapshot before saving. It does not delete or repair the orphaned rows.
+If a backup fails, no entry is inserted; the error includes the cause and a
+`cap recover retry <capture-id>` command to save the retained text and metadata
+after the cause is resolved. `cap recover list` shows pending captures.
+
 - [SPEC.md](SPEC.md): behavior, command contract, shared data architecture,
   recovery, color-cli reuse, visual effects, accessibility and release criteria.
 - [PLAN.md](PLAN.md): feature ownership, Luna task/worktree waves, review loops,
