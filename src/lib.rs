@@ -4,6 +4,7 @@ pub mod cli;
 pub mod commands;
 pub mod context_cache;
 pub mod contracts;
+mod entry_id;
 pub mod input;
 pub mod insights;
 pub mod output;

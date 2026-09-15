@@ -747,7 +747,12 @@ mod tests {
     fn latest_body_is_persisted_before_destination_validation() {
         let directory = tempdir().unwrap();
         let store = StateStore::at_dir(directory.path());
-        let resolved = resolved();
+        let mut resolved = resolved();
+        resolved.database_path = directory.path().join("capsule.db");
+        rusqlite::Connection::open(&resolved.database_path)
+            .unwrap()
+            .execute_batch("CREATE TABLE entries(uuid TEXT)")
+            .unwrap();
         let mut lease = DraftLease::new(store.clone(), &resolved).unwrap();
         let capture_id = lease.capture_id().to_owned();
         let error = persist_then_validate(&mut lease, "last edit", |request| {

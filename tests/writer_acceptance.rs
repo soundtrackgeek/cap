@@ -6,6 +6,66 @@ use std::fs;
 use support::Fixture;
 
 #[test]
+fn new_writer_uuid_survives_durable_draft_and_save_in_capsule_format() {
+    use cap::writer::draft::DraftLease;
+    use capsule_core::db::{resolve_capsule, ResolveRequest};
+
+    let fixture = Fixture::new();
+    let resolved = resolve_capsule(ResolveRequest {
+        database_path: Some(fixture.db.clone()),
+        backup_directory: Some(fixture.backup_dir().to_path_buf()),
+        settings: Some(Default::default()),
+        ..Default::default()
+    })
+    .unwrap();
+    let state_root =
+        fixture.isolated_environment()[std::ffi::OsStr::new("CAP_CONFIG_HOME")].clone();
+    let store = StateStore::at_dir(state_root);
+    let mut draft = DraftLease::new(store.clone(), &resolved).unwrap();
+    let capture_id = draft.capture_id().to_owned();
+    draft.persist_text("Writer UUID regression").unwrap();
+    let uuid = store
+        .read_pending(&capture_id)
+        .unwrap()
+        .unwrap()
+        .reserved_uuid;
+    assert_eq!(uuid.len(), 14);
+    assert!(uuid.starts_with("entry_"));
+    assert!(uuid[6..]
+        .bytes()
+        .all(|b| b.is_ascii_digit() || b.is_ascii_lowercase()));
+    drop(draft);
+
+    let output = fixture
+        .command()
+        .args(["--json", "--no-context", "recover", "retry", &capture_id])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stdout)
+    );
+    let db = rusqlite::Connection::open(&fixture.db).unwrap();
+    let saved_uuid: String = db
+        .query_row(
+            "SELECT uuid FROM entries WHERE text=?1",
+            ["Writer UUID regression"],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(saved_uuid, uuid);
+    assert_eq!(
+        store
+            .read_receipt(&capture_id)
+            .unwrap()
+            .unwrap()
+            .reserved_uuid,
+        uuid
+    );
+}
+
+#[test]
 fn noninteractive_writer_rejects_without_journal_or_draft_mutation() {
     let fixture = Fixture::new();
     let before = fixture.snapshot().unwrap();

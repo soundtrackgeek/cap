@@ -71,7 +71,7 @@ impl std::fmt::Debug for DraftLease {
 
 impl DraftLease {
     pub fn new(store: StateStore, resolved: &ResolvedCapsule) -> Result<Self, DraftError> {
-        let request = new_request(resolved);
+        let request = new_request(resolved)?;
         let lock = store.lock(&request.capture_id)?;
         Ok(Self {
             store,
@@ -308,15 +308,13 @@ pub fn ensure_uuid_unclaimed(request: &CaptureRequest) -> Result<(), DraftError>
     }
 }
 
-pub fn new_request(resolved: &ResolvedCapsule) -> CaptureRequest {
+pub fn new_request(resolved: &ResolvedCapsule) -> Result<CaptureRequest, DraftError> {
     let now = Local::now().fixed_offset();
     let id_seed = unix_nanos();
     let counter = ID_COUNTER.fetch_add(1, Ordering::Relaxed);
     let capture_id = format!("cap_writer_{id_seed:x}_{:x}_{counter}", std::process::id());
-    let reserved_uuid = format!(
-        "entry_writer_{id_seed:x}_{:x}_{counter}",
-        std::process::id()
-    );
+    let reserved_uuid = crate::entry_id::new_entry_uuid(&resolved.database_path)
+        .map_err(|error| DraftError::Database(error.to_string()))?;
     let policy = expected_backup_policy(resolved);
     let mut request = CaptureRequest::new(
         String::new(),
@@ -327,7 +325,7 @@ pub fn new_request(resolved: &ResolvedCapsule) -> CaptureRequest {
     );
     request.database_identity = resolved.database_identity.clone();
     request.backup_policy = Some(policy);
-    request
+    Ok(request)
 }
 
 fn expected_backup_policy(resolved: &ResolvedCapsule) -> BackupPolicy {
@@ -375,10 +373,13 @@ mod tests {
     use super::*;
     use std::path::PathBuf;
 
-    fn resolved() -> ResolvedCapsule {
-        let path = PathBuf::from("C:\\lab\\capsule.db");
+    fn resolved(path: &Path) -> ResolvedCapsule {
+        rusqlite::Connection::open(path)
+            .unwrap()
+            .execute_batch("CREATE TABLE entries(uuid TEXT)")
+            .unwrap();
         ResolvedCapsule {
-            database_path: path.clone(),
+            database_path: path.to_path_buf(),
             config_path: None,
             backup_directory: PathBuf::from("C:\\lab\\backups"),
             database_source: capsule_core::db::PathSource::Explicit,
@@ -416,45 +417,15 @@ mod tests {
 
     #[test]
     fn generated_request_freezes_ids_time_and_backup_policy() {
-        let path = PathBuf::from("C:\\lab\\capsule.db");
-        let resolved = ResolvedCapsule {
-            database_path: path.clone(),
-            config_path: None,
-            backup_directory: PathBuf::from("C:\\lab\\backups"),
-            database_source: capsule_core::db::PathSource::Explicit,
-            config_source: capsule_core::db::PathSource::Fallback,
-            config_valid: true,
-            config_error: None,
-            backup_source: capsule_core::db::PathSource::Fallback,
-            settings_path: None,
-            settings_source: capsule_core::db::PathSource::Fallback,
-            settings_valid: true,
-            settings_error: None,
-            database_identity: None,
-            settings: Default::default(),
-            diagnostics: Vec::new(),
-            capabilities: capsule_core::db::CapabilityReport {
-                database_path: Some(path.to_string_lossy().into_owned()),
-                database_exists: true,
-                readable: true,
-                schema: capsule_core::db::SchemaCapabilities {
-                    table_names: vec![],
-                    required_columns: Default::default(),
-                    optional_tables: Default::default(),
-                    has_entries_table: true,
-                    has_tags_table: true,
-                    has_fts_table: false,
-                    supports_read: true,
-                    supports_write: true,
-                    missing_required_columns: vec![],
-                },
-                write_support_reasons: vec![],
-                warnings: vec![],
-            },
-        };
-        let request = new_request(&resolved);
+        let directory = tempfile::tempdir().unwrap();
+        let resolved = resolved(&directory.path().join("capsule.db"));
+        let request = new_request(&resolved).unwrap();
         assert!(request.capture_id.starts_with("cap_writer_"));
-        assert!(request.reserved_uuid.starts_with("entry_writer_"));
+        assert_eq!(request.reserved_uuid.len(), 14);
+        assert!(request.reserved_uuid.starts_with("entry_"));
+        assert!(request.reserved_uuid[6..]
+            .bytes()
+            .all(|b| b.is_ascii_digit() || b.is_ascii_lowercase()));
         assert_eq!(
             request.backup_policy.unwrap().directory,
             PathBuf::from("C:\\lab\\backups")
@@ -465,7 +436,8 @@ mod tests {
     fn submission_boundary_rejects_further_mutation_even_while_lock_is_held() {
         let directory = tempfile::tempdir().unwrap();
         let store = StateStore::at_dir(directory.path());
-        let mut lease = DraftLease::new(store, &resolved()).unwrap();
+        let mut lease =
+            DraftLease::new(store, &resolved(&directory.path().join("capsule.db"))).unwrap();
         lease.persist_text("ready to submit").unwrap();
         lease.prepare_submission().unwrap();
         assert!(lease.request_mut().is_err());

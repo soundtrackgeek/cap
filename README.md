@@ -6,6 +6,11 @@ by a verified backup, frozen database identity and cap-local recovery records.
 Installation adds only the separate `cap.exe`; your existing Capsule app stays
 unchanged. Capsule can be closed while you use cap.
 
+New entries use Capsule's normal UUID format: `entry_` followed by eight
+lowercase letters/digits (for example, `entry_d262eioo`). Quick capture and the
+writer share the same generator. Existing pending captures retain their reserved
+UUID when retried so recovery cannot create a duplicate entry.
+
 Run `cargo run --locked --example core_process_probe` for the isolated shared-core
 crash/concurrency check. It creates and removes its own temporary synthetic
 journals; it accepts no existing journal path. `-- --bench` measures the core

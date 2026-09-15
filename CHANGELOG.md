@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0-dev.31 - 2026-09-15
+
+### Fixed
+
+- Quick captures and new writer drafts now use Capsule's normal `entry_` plus
+  eight lowercase base-36 characters, checking existing entries for collisions.
+  Retries retain their original reserved UUID to preserve recovery identity.
+
 ## 0.2.0-dev.30 - 2026-09-15
 
 ### Fixed

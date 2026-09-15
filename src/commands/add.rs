@@ -186,7 +186,8 @@ fn capture_internal_seeded(
                 .map_err(|error| AppError::new("INVALID_INPUT", error.to_string(), 2))?,
             None => new_capture_id(),
         };
-        let reserved_uuid = new_entry_uuid();
+        let reserved_uuid = crate::entry_id::new_entry_uuid(&resolved.database_path)
+            .map_err(|error| AppError::new("DB_READ", error.to_string(), 3))?;
         let mut request = CaptureRequest::new(
             text,
             capture_id,
@@ -1102,15 +1103,6 @@ fn new_capture_id() -> String {
     )
 }
 
-fn new_entry_uuid() -> String {
-    format!(
-        "entry_{}_{:x}_{}",
-        unix_nanos(),
-        std::process::id(),
-        ID_COUNTER.fetch_add(1, Ordering::Relaxed)
-    )
-}
-
 fn unix_nanos() -> u128 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -1124,11 +1116,9 @@ mod tests {
     use std::ffi::OsString;
 
     #[test]
-    fn generated_ids_are_capsule_compatible() {
+    fn generated_capture_ids_are_valid() {
         let capture = new_capture_id();
-        let entry = new_entry_uuid();
         assert!(identity::validate_capture_id(&capture).is_ok());
-        assert!(identity::validate_reserved_uuid(&entry).is_ok());
     }
 
     #[test]

@@ -78,6 +78,15 @@ fn add_commits_metadata_backup_and_durable_receipt() {
     assert_eq!(fixture.row_count("entries").unwrap(), before_rows + 1);
 
     let uuid = value["data"]["entryUuid"].as_str().unwrap().to_string();
+    assert_eq!(
+        uuid.len(),
+        14,
+        "saved entries use Capsule's short UUID format"
+    );
+    assert!(uuid.starts_with("entry_"));
+    assert!(uuid[6..]
+        .bytes()
+        .all(|b| b.is_ascii_digit() || b.is_ascii_lowercase()));
     let connection = Connection::open(&fixture.db).unwrap();
     let row = connection
         .query_row(
