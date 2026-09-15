@@ -288,6 +288,7 @@ statement of public-release permission for upstream material.
         if (Test-Path -LiteralPath $archivePath -PathType Leaf) { Remove-Item -LiteralPath $archivePath -Force }
         # Windows PowerShell's Compress-Archive can store backslash member names.
         # Use canonical ZIP paths so cap update can read the exact known members.
+        Add-Type -AssemblyName System.IO.Compression
         Add-Type -AssemblyName System.IO.Compression.FileSystem
         $zip = [IO.Compression.ZipFile]::Open($archivePath, [IO.Compression.ZipArchiveMode]::Create)
         try {
