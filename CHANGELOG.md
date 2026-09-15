@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0-dev.34 - 2026-09-15
+
+### Fixed
+
+- Windows release archives use standard forward-slash member names so `cap update`
+  can install the explicit-command fix from Windows PowerShell-built packages.
+  Unknown commands still show help without saving; quick capture requires `cap add`.
+- Release verification now exercises the updater against the actual packaged ZIP.
+
 ## 0.2.0-dev.33 - 2026-09-15
 
 ### Fixed

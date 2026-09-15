@@ -286,7 +286,17 @@ statement of public-release permission for upstream material.
 
         if ($WhatIfPreference) { return }
         if (Test-Path -LiteralPath $archivePath -PathType Leaf) { Remove-Item -LiteralPath $archivePath -Force }
-        Compress-Archive -LiteralPath $staging -DestinationPath $archivePath -CompressionLevel Optimal -Force
+        # Windows PowerShell's Compress-Archive can store backslash member names.
+        # Use canonical ZIP paths so cap update can read the exact known members.
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        $zip = [IO.Compression.ZipFile]::Open($archivePath, [IO.Compression.ZipArchiveMode]::Create)
+        try {
+            foreach ($file in @(Get-ChildItem -LiteralPath $staging -Recurse -File | Sort-Object FullName)) {
+                $member = "$archiveName/$(Get-RelativeUnixPath -Path $file.FullName -Root $staging)"
+                [void][IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $file.FullName, $member, [IO.Compression.CompressionLevel]::Optimal)
+            }
+        }
+        finally { $zip.Dispose() }
         $archiveHash = Get-Sha256 $archivePath
         [IO.File]::WriteAllText($archiveHashPath, "$archiveHash  $([IO.Path]::GetFileName($archivePath))$([Environment]::NewLine)", [Text.UTF8Encoding]::new($false))
         if (-not $SkipBuild) {

@@ -97,6 +97,8 @@ Capsule core, and a Rust port of the palettes/fade/shimmer from
 
 Development: `cargo test --workspace` and `cargo build`. Work package progress is
 tracked in [docs/implementation-status.md](docs/implementation-status.md).
+Before publishing, run the actual-archive updater check in
+[Windows delivery](docs/windows-install.md) as well as the workspace tests.
 Rust 1.95.0 is pinned in rust-toolchain.toml; rustup installs it when needed.
 The development build supports `--help`, `--version`, JSON help/usage errors,
 cap-local personality controls from WP07, explicit `cap add` capture from words,

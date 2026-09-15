@@ -114,6 +114,38 @@ mod windows {
     }
 
     #[test]
+    #[ignore = "requires CAP_TEST_PACKAGE_ARCHIVE pointing to the matching clean release ZIP"]
+    fn packaged_release_updates_a_running_windows_executable() {
+        let package = std::env::var_os("CAP_TEST_PACKAGE_ARCHIVE")
+            .expect("set CAP_TEST_PACKAGE_ARCHIVE to the packaged release ZIP");
+        let bytes = fs::read(package).unwrap();
+        let lab = Lab::new();
+        let archive_path = lab.root.path().join("update.zip");
+        fs::write(&archive_path, &bytes).unwrap();
+        let artifact = format!("cap-{}-windows-x86_64", env!("CARGO_PKG_VERSION"));
+        let checksum = format!("{:x}  {artifact}.zip", Sha256::digest(&bytes));
+        lab.fixture(|fixture| fixture["checksum"] = checksum.into());
+        let result = lab.run(&["--json", "update"]);
+        assert_eq!(result["ok"], true, "{result}");
+        assert_eq!(result["data"]["updated"], true);
+        assert_eq!(
+            result["data"]["installedVersion"],
+            env!("CARGO_PKG_VERSION")
+        );
+        let receipt: Value =
+            serde_json::from_slice(&fs::read(lab.root.path().join(".cap-install.json")).unwrap())
+                .unwrap();
+        let installed_hash = format!("{:x}", Sha256::digest(fs::read(&lab.exe).unwrap()));
+        assert_eq!(receipt["binarySha256"], installed_hash);
+        let version = lab.run(&["--json", "--version"]);
+        assert!(version["data"]["text"]
+            .as_str()
+            .unwrap()
+            .contains(env!("CARGO_PKG_VERSION")));
+        assert!(!lab.root.path().join("must-not-exist.db").exists());
+    }
+
+    #[test]
     fn running_windows_executable_updates_and_remains_runnable_with_a_valid_receipt() {
         let lab = Lab::new();
         let before = fs::read(lab.root.path().join(".cap-install.json")).unwrap();

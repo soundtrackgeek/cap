@@ -27,6 +27,18 @@ delivery binary hash to the source/core revisions, release profile, default
 feature set, and checkout state; `-SkipBuild` refuses a binary without a matching
 stamp.
 
+ZIP members use forward slashes on both Windows PowerShell and PowerShell 7.
+Before publishing, test the actual archive with an isolated running executable:
+
+```powershell
+$env:CAP_TEST_PACKAGE_ARCHIVE = (Resolve-Path '.\dist\cap-<version>-windows-x86_64.zip').Path
+cargo test --locked --features test-hooks --test update_process packaged_release_updates_a_running_windows_executable -- --ignored
+Remove-Item Env:CAP_TEST_PACKAGE_ARCHIVE
+```
+
+This check copies the archive and a test executable into a disposable lab,
+updates that copy, verifies its receipt and version, and never opens a journal.
+
 ## Install and update
 
 Once cap is installed, run `cap update` to install a newer version from the
