@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.0-dev.35 - 2026-09-15
+
+### Fixed
+
+- Location and weather capture retry a transient network failure or HTTP
+  429/502/503/504 once within the existing eight-second context budget, with
+  request spacing, cancellation, and server Retry-After handling.
+- Context network warnings include the underlying cause and attempt count.
+  Captures with missing context confirm that the entry is saved and show the
+  exact `cap enrich <entry-uuid>` command to retry without creating a duplicate.
+
 ## 0.2.0-dev.34 - 2026-09-15
 
 ### Fixed

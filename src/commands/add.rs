@@ -13,9 +13,9 @@ use capsule_core::{
     capture::{CaptureError, CaptureErrorCode, CaptureHookPoint, CaptureHooks},
     context::{
         Cancellation, ContextDependencies, ContextRequest, ContextService, NoopContextCache,
-        ReqwestHttpClient, SystemClock,
+        SystemClock,
     },
-    contracts::{BackupPolicy, CaptureOutcome, CaptureRequest, ContextResult},
+    contracts::{BackupPolicy, CaptureOutcome, CaptureRequest, ContextResult, ContextStatus},
     db::{self, ResolvedCapsule},
     identity,
 };
@@ -27,6 +27,7 @@ use crate::{
     cancellation,
     cli::{AddArgs, ContentFormat, GlobalOptions},
     context_cache::PersistentContextCache,
+    context_http::ContextHttpClient,
     input, preferences, query,
     recovery::{self, RecoveryRecord, RecoveryState, StateError, StateStore},
     ui::receipt::{self, ReceiptModel},
@@ -471,12 +472,20 @@ fn capture_internal_seeded(
     output.quiet = Some(receipt.uuid.clone());
     output.warnings = warnings;
     if let Some(context) = context {
+        let missing_context = context.location_status == ContextStatus::Unavailable
+            || context.weather_status == ContextStatus::Unavailable;
         output.warnings.extend(
             context
                 .warnings
                 .into_iter()
                 .map(|warning| cap_effects::sanitize_text(&warning)),
         );
+        if missing_context {
+            output.warnings.push(format!(
+                "Entry is saved. Retry missing context with: cap enrich {}",
+                receipt.uuid
+            ));
+        }
     }
     output.committed = true;
     Ok(output)
@@ -611,11 +620,12 @@ fn capture_context(
             identity,
         ))
     };
+    let cancellation: Arc<dyn Cancellation> = Arc::new(SignalCancellation);
     let service = ContextService::new(ContextDependencies {
-        http: Arc::new(ReqwestHttpClient::default()),
+        http: Arc::new(ContextHttpClient::new(cancellation.clone())?),
         clock: Arc::new(SystemClock::default()),
         cache,
-        cancellation: Arc::new(SignalCancellation),
+        cancellation,
     });
     service
         .capture(&context_request)

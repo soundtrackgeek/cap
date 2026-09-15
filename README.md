@@ -111,6 +111,12 @@ legacy IDs or create backups/cache files. Capture uses one immediate saved UUID,
 optional post-commit context, a 15-minute weather cache and a 30-day receipt
 retention window; `--dry-run` performs no backup, mutation, context or cache
 work, and `--no-context` skips provider/cache work entirely.
+Location/weather GET requests retry transient connection failures, timeouts,
+and HTTP 429/502/503/504 once within the same eight-second context budget.
+Retries are spaced at least one second apart and honor `Retry-After`. A provider
+outage can still leave context unavailable; the entry remains saved. The warning
+includes the network cause and the exact `cap enrich <entry-uuid>` command to
+retry missing metadata on that entry without saving its text again.
 `cap write` is TTY-only (machine and redirected invocations fail clearly), keeps
 multiline Unicode edits in cap-local recovery records after 500 ms idle and on
 Ctrl+C, and asks explicitly whether to resume or discard a draft on the next

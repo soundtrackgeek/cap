@@ -3,6 +3,7 @@ pub mod cancellation;
 pub mod cli;
 pub mod commands;
 pub mod context_cache;
+pub mod context_http;
 pub mod contracts;
 mod entry_id;
 pub mod input;

@@ -6,6 +6,7 @@ use crate::{
     app::{AppError, CommandOutput},
     cli::GlobalOptions,
     context_cache::PersistentContextCache,
+    context_http::ContextHttpClient,
     query,
     recovery::StateStore,
     ui::weather,
@@ -13,7 +14,7 @@ use crate::{
 use capsule_core::{
     context::{
         Cancellation, ContextDependencies, ContextRequest, ContextService, NoopContextCache,
-        ReqwestHttpClient, SystemClock,
+        SystemClock,
     },
     contracts::ContextResult,
     db::{self, PathSource},
@@ -76,11 +77,15 @@ pub fn run(identifier: &str, global: &GlobalOptions) -> Result<CommandOutput, Ap
             identity,
         ))
     };
+    let cancellation: Arc<dyn Cancellation> = Arc::new(SignalCancellation);
     let service = ContextService::new(ContextDependencies {
-        http: Arc::new(ReqwestHttpClient::default()),
+        http: Arc::new(
+            ContextHttpClient::new(cancellation.clone())
+                .map_err(|error| AppError::new("CONTEXT", error, 1))?,
+        ),
         clock: Arc::new(SystemClock::default()),
         cache,
-        cancellation: Arc::new(SignalCancellation),
+        cancellation,
     });
     let result = service
         .enrich(&request)
