@@ -28,7 +28,7 @@ Actual Windows Terminal visual review and native desktop coexistence remain
 unverified; this is a development build, not a published Capsule desktop release.
 
 ```powershell
-cap Had a lovely walk by the water
+cap add Had a lovely walk by the water
 cap write
 cap garden
 cap recall
@@ -37,7 +37,7 @@ cap update                 # install a newer version from the Git repository
 cap update --check         # check without installing
 cap add --mood content --tag life -- 'A quiet evening outside.'
 cap add --mood good --tags life,outdoors,gratitude,exercise "Had a lovely walk"
-Get-Content -Raw .\today.md | cap
+Get-Content -Raw .\today.md | cap add --stdin
 cap add --json --capture-id walk-2026-09-14 -- 'A caller-retryable note'
 cap status --capture-id walk-2026-09-14
 cap recover list
@@ -48,6 +48,11 @@ cap enrich <entry-uuid>
 cap --db .\capsule.db recent
 cap --db .\capsule.db search 'tag:work after:2026-01-01'
 ```
+
+Quick capture requires `cap add`. Unknown commands such as `cap test` report
+`Command not recognized`, display the same help as `cap --help`, and exit 2
+without saving an entry. Bare `cap` shows help, even with piped input; it does
+not start a draft or capture stdin. Use `cap write` explicitly for the editor.
 
 `cap add --tags` accepts comma-separated tags. You can repeat or mix `--tags`
 and `--tag` (for example, `--tags life,outdoors --tag gratitude`). Both spellings
@@ -94,7 +99,7 @@ Development: `cargo test --workspace` and `cargo build`. Work package progress i
 tracked in [docs/implementation-status.md](docs/implementation-status.md).
 Rust 1.95.0 is pinned in rust-toolchain.toml; rustup installs it when needed.
 The development build supports `--help`, `--version`, JSON help/usage errors,
-cap-local personality controls from WP07, quick capture from positional words,
+cap-local personality controls from WP07, explicit `cap add` capture from words,
 files or stdin, durable `status`/`recover` operations, explicit context
 enrichment, and bounded read handlers for `show`, `today`, `recent`, `search`,
 `tags`, `moods`, `context`, and `doctor`.

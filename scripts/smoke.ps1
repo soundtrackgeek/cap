@@ -242,6 +242,12 @@ try {
     Assert-SmokeResult -Result $help -Label 'installed cap --help'
     if ($help.Stdout -notmatch '(?m)cap') { throw 'cap --help did not produce command help.' }
 
+    $unknown = Invoke-IsolatedCap -Arguments @('test') -WorkingDirectory $unrelated -Environment $environment
+    if ($unknown.ExitCode -ne 2 -or $unknown.Stdout -ne '' -or
+        $unknown.Stderr -notmatch 'Command not recognized' -or -not $unknown.Stderr.EndsWith($help.Stdout)) {
+        throw "cap test must fail with the full help instead of capturing text: $($unknown.Stderr)"
+    }
+
     $doctor = Invoke-IsolatedCap -Arguments @('--json', 'doctor') -WorkingDirectory $unrelated -Environment $environment
     Assert-SmokeResult -Result $doctor -Label 'installed cap --json doctor'
     $doctorJson = $doctor.Stdout.Trim() | ConvertFrom-Json

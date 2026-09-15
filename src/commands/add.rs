@@ -1,7 +1,6 @@
 //! Quick capture and its post-commit context hand-off.
 
 use std::{
-    ffi::OsString,
     io::{self, IsTerminal, Write},
     sync::atomic::{AtomicU64, Ordering},
     sync::{atomic::AtomicBool, Arc},
@@ -41,21 +40,6 @@ pub fn run(args: &AddArgs, global: &GlobalOptions) -> Result<CommandOutput, AppE
     let stdin_is_terminal = io::stdin().is_terminal();
     let text = input::read_add(args, &mut stdin, stdin_is_terminal)?;
     capture(args, global, text, true)
-}
-
-/// Execute a default positional capture. `words = None` means no positional
-/// input, so a piped UTF-8 stdin is read as one entry.
-pub fn run_default(
-    words: Option<&[OsString]>,
-    global: &GlobalOptions,
-) -> Result<CommandOutput, AppError> {
-    let text = if let Some(words) = words {
-        input::from_words(words)?
-    } else {
-        let mut stdin = io::stdin().lock();
-        input::read_add(&AddArgs::default(), &mut stdin, io::stdin().is_terminal())?
-    };
-    capture(&AddArgs::default(), global, text, false)
 }
 
 /// Replay one locally pending request after an explicit reconciliation step.

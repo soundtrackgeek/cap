@@ -236,7 +236,7 @@ fn file_content_survives_exactly_and_display_controls_never_enter_storage() {
 #[test]
 fn shell_ambiguities_and_deliberate_identical_entries_are_preserved() {
     let fixture = Fixture::new();
-    let a = saved(&fixture, &["--", "today", "was wonderful"]);
+    let a = saved(&fixture, &["add", "--", "today", "was wonderful"]);
     let b = saved(&fixture, &["add", "--", "today was wonderful"]);
     let a_uuid = a["data"]["entryUuid"].as_str().unwrap();
     let b_uuid = b["data"]["entryUuid"].as_str().unwrap();
@@ -489,10 +489,10 @@ fn capture_id_retries_match_canonical_content_and_refuse_another_database() {
 }
 
 #[test]
-fn default_piped_capture_is_one_entry_and_invalid_utf8_is_rejected() {
+fn explicit_piped_capture_is_one_entry_and_invalid_utf8_is_rejected() {
     let fixture = Fixture::new();
     let mut child = command(&fixture)
-        .args(["--json", "--no-context"])
+        .args(["--json", "--no-context", "add"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

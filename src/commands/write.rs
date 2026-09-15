@@ -83,11 +83,6 @@ pub fn run(args: &WriteArgs, global: &GlobalOptions) -> Result<CommandOutput, Ap
     )
 }
 
-/// Entry point used by the no-argument TTY router in `app`.
-pub fn run_default(global: &GlobalOptions) -> Result<CommandOutput, AppError> {
-    run(&WriteArgs { editor: false }, global)
-}
-
 fn preflight_terminal(global: &GlobalOptions) -> Result<(), AppError> {
     if global.json || global.quiet {
         return Err(AppError::new(

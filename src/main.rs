@@ -29,7 +29,7 @@ fn run() -> i32 {
         Ok(cli) => cli,
         Err(error) => return print_parse_result(error, json_requested),
     };
-    let command = cli.command.as_ref().map(Command::name).unwrap_or("add");
+    let command = cli.command.as_ref().map(Command::name).unwrap_or("help");
     match app::execute(&cli) {
         Ok(result) => {
             let mut envelope = OutputEnvelope::success(command, result.data);
@@ -76,6 +76,11 @@ fn run() -> i32 {
 }
 
 fn print_parse_result(error: clap::Error, json: bool) -> i32 {
+    let message = if error.kind() == clap::error::ErrorKind::InvalidSubcommand {
+        format!("Command not recognized.\n\n{}", Cli::help_text())
+    } else {
+        error.to_string()
+    };
     let help = matches!(
         error.kind(),
         clap::error::ErrorKind::DisplayHelp | clap::error::ErrorKind::DisplayVersion
@@ -89,25 +94,22 @@ fn print_parse_result(error: clap::Error, json: bool) -> i32 {
     };
     if json {
         let envelope = if help {
-            OutputEnvelope::success(command, serde_json::json!({ "text": error.to_string() }))
+            OutputEnvelope::success(command, serde_json::json!({ "text": message }))
         } else {
-            OutputEnvelope::failure(
-                command,
-                CliError::new("INVALID_INPUT", error.to_string(), false),
-            )
+            OutputEnvelope::failure(command, CliError::new("INVALID_INPUT", &message, false))
         };
         let _ = output::write_json(&mut io::stdout().lock(), &envelope);
     } else if help {
         let _ = write!(
             io::stdout().lock(),
             "{}",
-            cap_effects::sanitize_text(&error.to_string())
+            cap_effects::sanitize_text(&message)
         );
     } else {
         let _ = write!(
             io::stderr().lock(),
             "{}",
-            cap_effects::sanitize_text(&error.to_string())
+            cap_effects::sanitize_text(&message)
         );
     }
     if help {

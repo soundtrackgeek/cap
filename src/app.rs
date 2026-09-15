@@ -3,7 +3,6 @@ use crate::{
     contracts::CliError,
 };
 use serde_json::Value;
-use std::io::IsTerminal;
 
 #[derive(Debug)]
 pub struct CommandOutput {
@@ -43,12 +42,7 @@ impl AppError {
 }
 
 pub fn execute(cli: &Cli) -> Result<CommandOutput, AppError> {
-    if cli.global.dry_run
-        && !matches!(
-            cli.command,
-            None | Some(Command::Add(_)) | Some(Command::Entry(_))
-        )
-    {
+    if cli.global.dry_run && !matches!(cli.command, None | Some(Command::Add(_))) {
         return Err(AppError::new(
             "INVALID_INPUT",
             "--dry-run is supported only for entry creation.",
@@ -56,11 +50,13 @@ pub fn execute(cli: &Cli) -> Result<CommandOutput, AppError> {
         ));
     }
     match &cli.command {
-        None if std::io::stdin().is_terminal() && std::io::stdout().is_terminal() => {
-            crate::commands::write::run_default(&cli.global)
+        None => {
+            let help = Cli::help_text();
+            Ok(CommandOutput::new(
+                serde_json::json!({ "text": help }),
+                help.trim_end(),
+            ))
         }
-        None => crate::commands::add::run_default(None, &cli.global),
-        Some(Command::Entry(words)) => crate::commands::add::run_default(Some(words), &cli.global),
         Some(Command::Add(args)) => crate::commands::add::run(args, &cli.global),
         Some(Command::Write(args)) => crate::commands::write::run(args, &cli.global),
         Some(Command::Theme { action }) => crate::commands::theme::run(action, &cli.global),

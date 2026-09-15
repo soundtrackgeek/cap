@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0-dev.33 - 2026-09-15
+
+### Fixed
+
+- Unknown commands such as `cap test` now report `Command not recognized`, show
+  the same help as `cap --help`, and exit 2 without creating an entry or recovery
+  state. Quick capture requires `cap add`.
+- Bare `cap` now shows help instead of opening the writer or capturing piped
+  input. Use `cap add --stdin` for pipes and `cap write` for the editor.
+
 ## 0.2.0-dev.32 - 2026-09-15
 
 ### Added

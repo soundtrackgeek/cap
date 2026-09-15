@@ -9,7 +9,7 @@ Specification version: 0.1.0 · 2026-09-14
 
 ## 1. Product promise
 
-Type `cap Had a lovely walk by the water` and the memory becomes a real Capsule
+Type `cap add Had a lovely walk by the water` and the memory becomes a real Capsule
 entry, in the same active database, with Capsule's configured location and weather
 capture. Capsule can be closed. When it is open, both programs can use the journal.
 The terminal gives the moment a small, satisfying celebration.
@@ -56,11 +56,11 @@ does not itself launch cloud sync.
 ### Quick capture
 
 ```powershell
-cap Had a lovely walk by the water
-cap 'Finally fixed that bug. Time for coffee!'
+cap add Had a lovely walk by the water
+cap add 'Finally fixed that bug. Time for coffee!'
 cap add --mood content --tag life --tag outdoors -- 'A quiet evening outside.'
 cap add --mood good --tags life,outdoors,gratitude,exercise "Had a lovely walk"
-Get-Content -Raw .\today.md | cap
+Get-Content -Raw .\today.md | cap add --stdin
 cap add --file .\today.md
 ```
 
@@ -90,9 +90,9 @@ an entry-save failure. Full text is available through `cap show <uuid>`.
 
 ### A writing session
 
-`cap` with an interactive input/output terminal opens the compact writer, as does
-`cap write`. A thin ambient border uses the chosen theme; the writing surface
-stays readable and still. Metadata sits in a small footer.
+`cap write` with an interactive input/output terminal opens the compact writer.
+A thin ambient border uses the chosen theme; the writing surface stays readable
+and still. Metadata sits in a small footer.
 
 - Enter inserts a newline. Ctrl+S saves; Ctrl+C exits while keeping a nonempty
   draft. Support multiline paste and Unicode without interpreting pasted keys.
@@ -121,10 +121,10 @@ tracked separately from feature implementation.
 
 | Form | Behavior | Release |
 | --- | --- | --- |
-| `cap <text...>` | Create one entry using Capsule defaults. | R1 |
+| `cap` | Show help without reading stdin or opening a draft or database. | R1 |
 | `cap add [options] -- <text...>` | Explicit, unambiguous create. | R1 |
 | `cap add --file PATH` / `cap add --stdin` | One entry from UTF-8 text; `--file -` also means stdin. | R1 |
-| `cap write [--editor]` / interactive `cap` | Draft-backed writing session. | R2 |
+| `cap write [--editor]` | Draft-backed writing session. | R2 |
 | `cap show <uuid-or-number>` | Read exact entry; return both current display number and stable UUID. | R1 |
 | `cap today` / `cap recent [--limit N --offset N]` | Visible entries, oldest-first for today and newest-first for recent. | R1 |
 | `cap search '<query>' [--limit N --offset N]` | Capsule keyword/structured search, including `tag:`, `mood:`, `before:`, `after:`, `NOT tag:`. | R1 |
@@ -147,23 +147,23 @@ tracked separately from feature implementation.
 
 Input rules:
 
-1. The exact first non-global-option token chooses a reserved subcommand. All
-   other positional input is an entry. Reserved names appear in help. To journal
-   text starting with one, use `cap -- today was wonderful` or `cap add -- 'today
-   was wonderful'`. Invalid arguments to a recognized command are errors, never
-   fallback journal entries. `cap doctor nonsense` must not write anything.
-2. `--` ends all option parsing and treats the remainder as text. Otherwise flags
-   must precede free text. Unknown leading options fail with a useful hint.
+1. The exact first non-global-option token chooses a reserved subcommand. Unknown
+   commands such as `cap test` report `Command not recognized`, display the same
+   help as `cap --help`, and exit 2 without saving. Quick capture requires `cap add`.
+   Use `cap add -- 'today was wonderful'` for literal command names. Invalid
+   arguments never become journal entries; `cap doctor nonsense` must not write.
+2. After `cap add`, `--` ends option parsing and treats the remainder as text.
+   Otherwise flags must precede free text. Unknown leading options fail with a useful hint.
    `write-the-entry-here` remains literal text; hyphens do not become spaces.
 3. The shell processes its own syntax before cap runs. Unquoted words are joined
    with one space. Quote punctuation, PowerShell `#`, `|`, `&`, `$` expressions,
    and content requiring exact spacing. File/stdin input preserves spacing and
    line breaks apart from Capsule's CRLF/CR-to-LF normalization. UTF-8 BOM is
    accepted. Invalid UTF-8 is reported, not silently replaced.
-4. Exactly one content source is allowed. Text plus file/stdin is an error. No
-   arguments with piped stdin captures one entry, not one per line. With no input
-   and no usable interactive terminal, show usage and exit 2. `--help` never waits
-   for stdin or opens a DB.
+4. Exactly one content source is allowed for `cap add`. Text plus file/stdin is an
+   error. `cap add` with piped stdin captures one entry, not one per line. Bare
+   `cap` and `--help` show help without reading stdin, opening a DB, or creating
+   a draft. `cap add` without text or piped input reports an input error.
 5. Reject whitespace-only input. Default maximum input is 1 MiB of UTF-8 bytes;
    stop reading at the limit and explain it. Larger import tooling is deferred.
 6. Metadata flags: `--mood`, repeatable `--tag` (alias `--tags`, both accepting

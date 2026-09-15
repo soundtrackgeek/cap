@@ -132,9 +132,8 @@ fn eligible(cli: &Cli, tty: bool, ci: bool) -> bool {
         && !ci
         && matches!(
             cli.command,
-            None | Some(
+            Some(
                 Command::Add(_)
-                    | Command::Entry(_)
                     | Command::Write(_)
                     | Command::Show(_)
                     | Command::Today(_)
@@ -322,17 +321,14 @@ mod tests {
 
     #[test]
     fn notices_are_only_for_successful_interactive_journal_commands() {
-        for args in [
-            vec!["cap", "add", "hello"],
-            vec!["cap", "recent"],
-            vec!["cap"],
-        ] {
+        for args in [vec!["cap", "add", "hello"], vec!["cap", "recent"]] {
             let cli = Cli::parse_from(args);
             assert!(eligible(&cli, true, false));
             assert!(!eligible(&cli, false, false));
             assert!(!eligible(&cli, true, true));
         }
         for args in [
+            vec!["cap"],
             vec!["cap", "--json", "recent"],
             vec!["cap", "--quiet", "recent"],
             vec!["cap", "--offline", "recent"],

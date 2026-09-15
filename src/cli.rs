@@ -1,20 +1,30 @@
-use clap::{Args, Parser, Subcommand, ValueEnum};
-use std::{ffi::OsString, path::PathBuf};
+use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
+use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
 #[command(
     name = "cap",
+    bin_name = "cap",
     version,
     long_version = env!("CAP_LONG_VERSION"),
     about = "A little ceremony for everyday Capsule memories",
     disable_help_subcommand = true,
-    after_help = "Write an entry: cap Had a lovely walk\nLiteral command names: cap add -- today was wonderful\nFile capture: cap add --file today.md\nUse --json before a command for machine-readable output."
+    after_help = "Write an entry: cap add Had a lovely walk\nLiteral command names: cap add -- today was wonderful\nFile capture: cap add --file today.md\nUse --json before a command for machine-readable output."
 )]
 pub struct Cli {
     #[command(flatten)]
     pub global: GlobalOptions,
     #[command(subcommand)]
     pub command: Option<Command>,
+}
+
+impl Cli {
+    pub fn help_text() -> String {
+        Self::command()
+            .color(clap::ColorChoice::Never)
+            .render_help()
+            .to_string()
+    }
 }
 
 #[derive(Debug, Clone, Default, Args)]
@@ -153,8 +163,6 @@ pub enum Command {
         #[arg(long)]
         include_hidden: bool,
     },
-    #[command(external_subcommand)]
-    Entry(Vec<OsString>),
 }
 
 #[derive(Debug, Default, Args)]
@@ -248,7 +256,7 @@ pub enum ConfigAction {
 impl Command {
     pub fn name(&self) -> &'static str {
         match self {
-            Self::Add(_) | Self::Entry(_) => "add",
+            Self::Add(_) => "add",
             Self::Write(_) => "write",
             Self::Show(_) => "show",
             Self::Today(_) => "today",
@@ -280,14 +288,14 @@ impl Command {
 mod tests {
     use super::*;
     #[test]
-    fn free_text_and_escaped_reserved_names_are_entries() {
+    fn free_text_and_escaped_reserved_names_require_add() {
         for input in [
+            vec!["cap", "test"],
             vec!["cap", "lovely", "walk"],
             vec!["cap", "--", "today", "was", "lovely"],
             vec!["cap", "write-the-entry-here"],
         ] {
-            let cli = Cli::try_parse_from(input).unwrap();
-            assert!(matches!(cli.command, Some(Command::Entry(_))));
+            assert!(Cli::try_parse_from(input).is_err());
         }
     }
     #[test]
