@@ -139,7 +139,7 @@ fn plant_bed_at(garden: &MemoryGarden, progress: f64) -> String {
         let sprite = match growth {
             GardenGrowth::Bare => ["     ", "     ", "     ", "_____"],
             GardenGrowth::Seed => ["     ", "     ", "  .  ", "_____"],
-            GardenGrowth::Sprout => ["     ", " \\/  ", "  |  ", "__|__"],
+            GardenGrowth::Sprout => ["     ", " \\ / ", "  |  ", "__|__"],
             GardenGrowth::Leaf => ["  |  ", " \\|/ ", "  |  ", "__|__"],
             GardenGrowth::Bloom => [" (@) ", " \\|/ ", "  |  ", "__|__"],
         };

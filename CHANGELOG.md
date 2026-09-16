@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0-dev.40 - 2026-09-16
+
+### Fixed
+
+- Center the garden's sprout leaves over their stem, matching the alignment of
+  the later growth stages.
+
 ## 0.2.0-dev.39 - 2026-09-16
 
 ### Fixed
