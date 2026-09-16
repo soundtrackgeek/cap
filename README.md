@@ -160,7 +160,9 @@ Recall opens the shell before its date and static body; garden draws seven small
 plants above its word-count legend. Memory views use available width and preserve
 scrollback; a scene taller than the terminal finishes without repeated redraws.
 Set `preview_visibility never` to hide save previews, or `icon_mode ascii` for
-ASCII decorations. Cached weather keeps its original observation timestamp.
+ASCII decorations. Cached weather shows its original observation timestamp in
+your system's local timezone, including the applicable daylight-saving offset.
+Stored timestamps and JSON output keep the original fetch time.
 The writer scrolls long lines to keep the caret visible, respects terminal cell
 width for Unicode, and animates only its side rail while idle. Ctrl+S saves;
 Ctrl+C keeps the draft and exits with code 130; Escape keeps it and exits normally.

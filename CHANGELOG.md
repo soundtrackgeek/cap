@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0-dev.39 - 2026-09-16
+
+### Fixed
+
+- Cached weather timestamps in human capture receipts use the system's local
+  timezone, including the daylight-saving offset at the time of the observation.
+  Stored timestamps and JSON output retain the original fetch time.
+
 ## 0.2.0-dev.38 - 2026-09-15
 
 ### Changed

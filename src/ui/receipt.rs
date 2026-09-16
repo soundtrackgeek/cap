@@ -487,7 +487,7 @@ fn render_stamp_from_model(model: &ReceiptModel, plain: bool) -> String {
         weather.push_str(" (cached");
         if let Some(fetched) = model.weather.fetched_at.as_deref() {
             weather.push_str(" · fetched ");
-            weather.push_str(&sanitize_text(fetched));
+            weather.push_str(&format_fetched_at(fetched, &chrono::Local));
         }
         weather.push(')');
     }
@@ -497,6 +497,14 @@ fn render_stamp_from_model(model: &ReceiptModel, plain: bool) -> String {
         plain,
     );
     format!("{accent} {} · {}", sanitize_text(location), weather)
+}
+
+// Convert only for human output. Stored receipts and JSON retain the original
+// instant, and Local applies the system's timezone rules at that instant.
+fn format_fetched_at<Tz: chrono::TimeZone>(fetched: &str, timezone: &Tz) -> String {
+    chrono::DateTime::parse_from_rfc3339(fetched)
+        .map(|value| value.with_timezone(timezone).to_rfc3339())
+        .unwrap_or_else(|_| sanitize_text(fetched))
 }
 
 #[cfg(test)]
@@ -568,6 +576,65 @@ mod tests {
         assert_ne!(scene(0.41), scene(0.56));
         assert!(!scene(0.65).contains("A two line"));
         assert!(seal_frame_at(&model, Theme::Aurora, 39, 0.65, false).done);
+    }
+
+    #[test]
+    fn fetched_time_conversion_handles_offsets_and_date_boundaries() {
+        for (fetched, offset, expected) in [
+            (
+                "2026-09-16T05:16:00+00:00",
+                2 * 3600,
+                "2026-09-16T07:16:00+02:00",
+            ),
+            ("2026-01-16T05:16:00Z", 3600, "2026-01-16T06:16:00+01:00"),
+            (
+                "2026-09-16T05:16:00Z",
+                -7 * 3600,
+                "2026-09-15T22:16:00-07:00",
+            ),
+            (
+                "2026-09-16T23:16:00Z",
+                5 * 3600 + 1800,
+                "2026-09-17T04:46:00+05:30",
+            ),
+            ("2026-09-16T07:16:00+02:00", 0, "2026-09-16T05:16:00+00:00"),
+        ] {
+            let timezone = FixedOffset::east_opt(offset).unwrap();
+            assert_eq!(format_fetched_at(fetched, &timezone), expected);
+        }
+    }
+
+    #[test]
+    fn invalid_fetched_time_remains_sanitized() {
+        assert_eq!(format_fetched_at("\x1b[31munknown\x1b[0m", &Utc), "unknown");
+    }
+
+    #[test]
+    fn cached_receipt_displays_local_time_and_preserves_machine_timestamp() {
+        let request = request();
+        let receipt = CommitReceipt::committed("entry-1", "cap-1", Utc::now());
+        let mut model = ReceiptModel::from_parts(&request, &receipt, None);
+        let fetched = "2026-09-16T05:16:00+00:00";
+        model.weather.status = "cached".into();
+        model.weather.condition = Some("Rain".into());
+        model.weather.fetched_at = Some(fetched.into());
+
+        let expected = Utc
+            .with_ymd_and_hms(2026, 9, 16, 5, 16, 0)
+            .unwrap()
+            .with_timezone(&chrono::Local)
+            .to_rfc3339();
+        for plain in [true, false] {
+            let stamp = render_stamp_from_model(&model, plain);
+            assert!(
+                stamp.contains(&format!("(cached · fetched {expected})")),
+                "receipt must show local fetch time: {stamp}"
+            );
+        }
+        assert_eq!(
+            serde_json::to_value(&model).unwrap()["weather"]["fetchedAt"],
+            fetched
+        );
     }
 
     #[test]
